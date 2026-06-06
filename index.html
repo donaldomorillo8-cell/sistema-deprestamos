@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>SISTEMA R Y M - OFICIAL</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD"></script>
+
+    <style>
+
+        :root { --oro: #c5a059; --negro: #1a2a3a; --gris: #f4f4f4; }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            padding: 10px;
+            /* Se añade la imagen de fondo con propiedades de escalado */
+            background-image: url('https://images.prodia.com/uploads/149f1ec5-fa13-43da-b570-36e2f411b411.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        /* Se añade una ligera transparencia blanca para que se aprecie el fondo sin perder contraste */
+        .contenedor { background: rgba(255, 255, 255, 0.94); padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin: auto; width: 95%; max-width: 800px; backdrop-filter: blur(5px); }
+
+        .login-box { max-width: 350px; text-align: center; margin-top: 50px; }
+
+        .logo-c { width: 70px; height: 70px; background: var(--negro); color: var(--oro); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; border: 3px solid var(--oro); margin: 0 auto 15px; }
+
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; }
+
+        .btn { background: var(--oro); color: white; padding: 15px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; transition: 0.3s; }
+
+        .btn-v { background: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
+
+        .btn-adm { background: var(--negro); color: var(--oro); border: 2px solid var(--oro); padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+
+        th { background: var(--negro); color: white; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+
+        .ticket { background: white; padding: 20px; width: 280px; text-align: center; border: 1px dashed #333; font-family: monospace; }
+
+        .seccion { display: none; }
+
+        .activa { display: block; }
+
+        .enlace-registro { display: block; margin-top: 20px; color: var(--negro); text-decoration: none; font-size: 14px; font-weight: bold; }
+
+        .badge-sicla { background: red; color: white; padding: 2px 5px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
+
+        
+
+        /* Estilos para Suscripción Vencida y Pagos */
+
+        .aviso-vencido { color: #721c24; background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 8px; margin-top: 15px; display: none; }
+
+        .aviso-vencido button { background: #dc3545; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%; }
+
+        .metodo-pago { border: 2px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: 0.3s; text-align: left; display: flex; align-items: center; gap: 10px; }
+
+        .metodo-pago:hover { border-color: var(--oro); background: #fffdf5; }
+
+
+
+        /* Estilos para administración de usuarios */
+
+        .btn-add-dias { background: #28a745; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 2px;}
+
+        .btn-rem-dias { background: #ffc107; color: black; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 2px;}
+
+        .btn-del-user { background: #dc3545; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+
+
+        @media print { .no-p { display: none !important; } body * { visibility: hidden; } #r-print, #r-print * { visibility: visible; } #r-print { position: absolute; left: 0; top: 0; width: 100%; } }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+    <div id="v-login" class="contenedor login-box seccion activa">
+
+        <div class="logo-c">R&M</div>
+
+        <h2>Acceso Privado</h2>
+
+        <input type="text" id="l-cor" placeholder="Correo electrónico o Usuario">
+
+        <input type="password" id="l-cla" placeholder="Contraseña">
+
+        <button class="btn" onclick="entrar()">INGRESAR</button>
+
+        
+
+        <div id="msg-vencido" class="aviso-vencido">
+
+            Tu suscripción ha sido vencida. <br>
+
+            <button onclick="abrirM('m-pago')">PULSA AQUÍ PARA ACTIVARLA</button>
+
+        </div>
+
+
+
+        <a href="#" onclick="cambiarV('v-registro')" class="enlace-registro">¿No tienes cuenta? Adquirir Plan</a>
+
+    </div>
+
+
+
+    <div id="v-registro" class="contenedor login-box seccion">
+
+        <div class="logo-c">R&M</div>
+
+        <h2>Registro de Usuario</h2>
+
+        <input type="text" id="r-nom" placeholder="Nombre completo">
+
+        <input type="email" id="r-cor" placeholder="Correo electrónico">
+
+        <input type="password" id="r-cla" placeholder="Contraseña">
+
+        <button class="btn" onclick="registrarUsuario()">REGISTRAR Y ELEGIR PLAN</button>
+
+        <a href="#" onclick="cambiarV('v-login')" class="enlace-registro">Volver al Login</a>
+
+    </div>
+
+
+
+    <div id="v-sis" class="contenedor seccion">
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+
+            <h2 id="tit-emp" style="margin:0;">SISTEMA</h2>
+
+            <div style="display:flex; gap:10px;">
+
+                <button id="btn-adm" class="btn-adm" style="display:none;" onclick="cambiarV('v-panel-admin')">PANEL CONTROL</button>
+
+                <button class="btn" style="width:auto; padding:10px 20px;" onclick="abrirM('m-nue')">+ NUEVO</button>
+
+            </div>
+
+        </div>
+
+        <div style="background:var(--negro); color:var(--oro); padding:15px; border-radius:10px; margin:20px 0;">
+
+            Capital en Calle: <br><strong>RD$ <span id="total-calle">0.00</span></strong>
+
+        </div>
+
+        <div style="overflow-x:auto;">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Cliente</th>
+
+                        <th>Cuotas</th>
+
+                        <th>Plan</th>
+
+                        <th>Monto</th>
+
+                        <th>Resta</th>
+
+                        <th>Acción</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="t-body"></tbody>
+
+            </table>
+
+        </div>
+
+        <br>
+
+        <button onclick="salir()" style="color:red; background:none; border:none; cursor:pointer; font-weight:bold;">Cerrar Sesión</button>
+
+    </div>
+
+
+
+    <div id="v-panel-admin" class="contenedor seccion">
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:20px;">
+
+            <h2 style="margin:0;">Panel de Monitoreo General</h2>
+
+            <button class="btn" style="width:auto; padding:10px 20px; background:var(--negro); color:var(--oro); border:2px solid var(--oro);" onclick="cambiarV('v-sis')">VOLVER AL PANEL</button>
+
+        </div>
+
+        
+
+        <h3>Cuentas Registradas en el Sistema</h3>
+
+        <div style="overflow-x:auto;">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Usuario / Correo</th>
+
+                        <th>Nombre</th>
+
+                        <th>Fecha/Hora Registro</th>
+
+                        <th>Dirección IP</th>
+
+                        <th>Plan Activo</th>
+
+                        <th>Días Restantes</th>
+
+                        <th>Acciones de Gestión</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="t-admin-users-body"></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="m-pago" class="modal">
+
+        <div class="contenedor" style="max-width:400px; text-align:center;">
+
+            <h3>Adquirir / Reactivar Suscripción</h3>
+
+            <p>Destinatario de pago: <b>Donaldo Ysaias Soto (R&M)</b></p>
+
+            
+
+            <label for="pago-plan" style="text-align: left; display: block; font-weight: bold; margin-bottom: 2px;">Selecciona tu Plan:</label>
+
+            <select id="pago-plan" onchange="actualizarPrecioBoton()">
+
+                <option value="semanal">Semanal — $2 USD</option>
+
+                <option value="mensual" selected>Mensual — $10 USD</option>
+
+                <option value="anual">Anual — $50 USD</option>
+
+            </select>
+
+            <hr>
+
+            
+
+            <div id="paypal-button-container" style="margin: 20px 0;"></div>
+
+
+
+            <p style="font-size:12px; color:gray;">Al pagar vía PayPal de manera segura, se activará el tiempo correspondiente de forma inmediata.</p>
+
+            <button class="btn" style="background:#6c757d;" onclick="cerrarM('m-pago')">CANCELAR</button>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="m-nue" class="modal">
+
+        <div class="contenedor" style="max-width:350px;">
+
+            <h3>Nuevo Préstamo</h3>
+
+            <input type="text" id="n-cli" placeholder="Nombre del Cliente">
+
+            <input type="text" id="n-ced" placeholder="Cédula del Cliente">
+
+            <input type="number" id="n-mon" placeholder="Monto Total RD$">
+
+            <select id="n-pla">
+
+                <option value="Diario">Diario</option>
+
+                <option value="Semanal">Semanal</option>
+
+                <option value="Quincenal">Quincenal</option>
+
+                <option value="Mensual">Mensual</option>
+
+            </select>
+
+            <input type="number" id="n-cuo" placeholder="Cuotas (10, 20, 30...)">
+
+            <button class="btn" onclick="guardarP()">GUARDAR</button>
+
+            <button class="btn" style="background:#6c757d; margin-top:5px;" onclick="cerrarM('m-nue')">CANCELAR</button>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="m-recibo" class="modal">
+
+        <div class="ticket" id="r-print">
+
+            <div class="logo-c" style="width:50px; height:50px; font-size:14px;">R&M</div>
+
+            <h3>R Y M FINANZAS</h3>
+
+            <hr>
+
+            <div style="text-align:left; font-size:12px;">
+
+                <p>FECHA: <span id="rf"></span></p>
+
+                <p>CLIENTE: <span id="rc"></span></p>
+
+                <p>CÉDULA: <span id="r-ced"></span></p>
+
+                <p>CUOTAS: <b id="rtq"></b></p>
+
+                <p>PLAN: <span id="rp"></span></p>
+
+                <p>PAGO: <b>RD$ <span id="rm"></span></b></p>
+
+                <div style="background:#e8f5e9; padding:8px; border:1px solid #c8e6c9; margin:10px 0;">
+
+                    Recomendación cuota: <br><b>RD$ <span id="rq"></span></b>
+
+                </div>
+
+                <p>RESTANTE: <b style="color:red;">RD$ <span id="rr"></span></b></p>
+
+            </div>
+
+            <hr>
+
+            <div class="no-p">
+
+                <button class="btn" style="background:#28a745;" onclick="window.print()">IMPRIMIR</button>
+
+                <button class="btn" style="background:red; margin-top:5px;" onclick="cerrarM('m-recibo')">CERRAR</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <script>
+
+        // --- BASE DE DATOS Y SESIÓN ---
+
+        let usuarios = JSON.parse(localStorage.getItem('RYM_USERS_DATABASE')) || [
+
+            {correo: 'donaldomorillo8@gmail.com', clave: 'donaldo020202', nombre: 'DONALDO MORILLO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1'},
+
+            {correo: 'robertomontero128@gmail.com', clave: 'rocio1234', nombre: 'ROBERT MONTERO', plan: 'Admin', diasRestantes: 9999, rango: 'ADMIN 1', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1'},
+
+            {correo: 'monteroroberto124@gmail.com', clave: 'rocio5020', nombre: 'ADMINISTRADOR MAESTRO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Inmediato', ip: 'Gestor'}
+
+        ];
+
+        
+
+        let prestamos = JSON.parse(localStorage.getItem('RYM_DATA_V2')) || [];
+
+        let sesion = JSON.parse(localStorage.getItem('RYM_SESSION_SYSTEM')) || null;
+
+
+
+        window.onload = function() {
+
+            initPayPalButton();
+
+
+
+            if(sesion) {
+
+                if(sesion.diasRestantes <= 0) {
+
+                    localStorage.removeItem('RYM_SESSION_SYSTEM');
+
+                    document.getElementById('msg-vencido').style.display = 'block';
+
+                    return;
+
+                }
+
+                document.getElementById('tit-emp').innerText = sesion.nombre;
+
+                const btnAdmin = document.getElementById('btn-adm');
+
+                if(sesion.rango === 'SUPER-ADMIN' || sesion.rango === 'ADMIN 1') btnAdmin.style.display = 'block';
+
+                cambiarV('v-sis');
+
+                dibujar(false);
+
+                dibujarAdminPanel();
+
+            }
+
+        };
+
+
+
+        // --- FUNCIONES DE ACCESO Y PAGO ---
+
+        function entrar() {
+
+            const cor = document.getElementById('l-cor').value.trim();
+
+            const cla = document.getElementById('l-cla').value;
+
+            const user = usuarios.find(u => u.correo === cor && u.clave === cla);
+
+            const aviso = document.getElementById('msg-vencido');
+
+
+
+            aviso.style.display = 'none';
+
+
+
+            if(user) {
+
+                if(user.diasRestantes <= 0) {
+
+                    aviso.style.display = 'block';
+
+                    return;
+
+                }
+
+                if(user.rango !== 'SUPER-ADMIN' && user.panel === false) return alert("ACCESO DENEGADO.");
+
+
+
+                sesion = user;
+
+                localStorage.setItem('RYM_SESSION_SYSTEM', JSON.stringify(user));
+
+                document.getElementById('tit-emp').innerText = user.nombre;
+
+                const btnAdmin = document.getElementById('btn-adm');
+
+                if(user.rango === 'SUPER-ADMIN' || user.rango === 'ADMIN 1') btnAdmin.style.display = 'block';
+
+                
+
+                cambiarV('v-sis');
+
+                dibujar(false);
+
+                dibujarAdminPanel();
+
+            } else { alert("Datos incorrectos"); }
+
+        }
+
+
+
+        function registrarUsuario() {
+
+            const nom = document.getElementById('r-nom').value.trim();
+
+            const cor = document.getElementById('r-cor').value.trim();
+
+            const cla = document.getElementById('r-cla').value;
+
+
+
+            if(!nom || !cor || !cla) return alert("Por favor complete todos los campos.");
+
+
+
+            const existe = usuarios.find(u => u.correo === cor);
+
+            if(existe) return alert("Este usuario/correo ya está registrado.");
+
+
+
+            document.getElementById('l-cor').value = cor;
+
+
+
+            const ahora = new Date().toLocaleString();
+
+            const ipSimulada = "192.168." + Math.floor(Math.random() * 254 + 1) + "." + Math.floor(Math.random() * 254 + 1);
+
+
+
+            usuarios.push({
+
+                correo: cor,
+
+                clave: cla,
+
+                nombre: nom.toUpperCase(),
+
+                plan: 'Ninguno',
+
+                diasRestantes: 0,
+
+                rango: 'USUARIO',
+
+                panel: true,
+
+                fechaRegistro: ahora,
+
+                ip: ipSimulada
+
+            });
+
+            localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
+
+            
+
+            alert("Usuario registrado. Selecciona tu plan y paga con PayPal para activar tu cuenta.");
+
+            cambiarV('v-login');
+
+            abrirM('m-pago');
+
+        }
+
+
+
+        function initPayPalButton() {
+
+            paypal.Buttons({
+
+                style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'paypal' },
+
+                createOrder: function(data, actions) {
+
+                    const planSeleccionado = document.getElementById('pago-plan').value;
+
+                    let costo = "10.00"; 
+
+                    if(planSeleccionado === 'semanal') costo = "2.00";
+
+                    if(planSeleccionado === 'anual') costo = "50.00";
+
+
+
+                    return actions.order.create({
+
+                        purchase_units: [{
+
+                            description: "Suscripción Sistema R&M Finanzas",
+
+                            amount: { currency_code: "USD", value: costo },
+
+                            payee: { email_address: "morilloysaia6@gmail.com" }
+
+                        }]
+
+                    });
+
+                },
+
+                onApprove: function(data, actions) {
+
+                    return actions.order.capture().then(function(details) {
+
+                        const correoInput = document.getElementById('l-cor').value.trim();
+
+                        if(!correoInput) {
+
+                            alert("Pago recibido sin vinculación de cuenta. ID Transacción: " + details.id);
+
+                            return;
+
+                        }
+
+
+
+                        const planSeleccionado = document.getElementById('pago-plan').value;
+
+                        let dias = 30;
+
+                        let nombrePlan = "Mensual";
+
+
+
+                        if(planSeleccionado === 'semanal') { dias = 7; nombrePlan = "Semanal"; }
+
+                        if(planSeleccionado === 'anual') { dias = 365; nombrePlan = "Anual"; }
+
+
+
+                        let uIdx = usuarios.findIndex(u => u.correo === correoInput);
+
+                        if(uIdx !== -1) {
+
+                            usuarios[uIdx].diasRestantes = dias;
+
+                            usuarios[uIdx].plan = nombrePlan;
+
+                            localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
+
+                            alert("¡Pago Exitoso! Cuenta activada por " + dias + " días.");
+
+                            cerrarM('m-pago');
+
+                            location.reload();
+
+                        } else { alert("Error al asignar los parámetros de compra."); }
+
+                    });
+
+                }
+
+            }).render('#paypal-button-container');
+
+        }
+
+
+
+        function actualizarPrecioBoton() {
+
+            document.getElementById('paypal-button-container').innerHTML = '';
+
+            initPayPalButton();
+
+        }
+
+
+
+        // --- PANEL ADMIN ---
+
+        function dibujarAdminPanel() {
+
+            const bodyAdmin = document.getElementById('t-admin-users-body');
+
+            if(!bodyAdmin) return;
+
+            bodyAdmin.innerHTML = '';
+
+
+
+            usuarios.forEach((u, index) => {
+
+                const esMaestro = u.correo === 'monteroroberto124@gmail.com';
+
+                
+
+                bodyAdmin.innerHTML += `<tr>
+
+                    <td><b>${u.correo}</b></td>
+
+                    <td>${u.nombre}</td>
+
+                    <td>${u.fechaRegistro || 'No registrada'}</td>
+
+                    <td><i>${u.ip || 'Desconocida'}</i></td>
+
+                    <td><span style="font-weight:bold; color:var(--oro);">${u.plan || 'Ninguno'}</span></td>
+
+                    <td><b>${u.diasRestantes} días</b></td>
+
+                    <td>
+
+                        ${esMaestro ? '<small style="color:gray;">Cuenta Maestra Raíz</small>' : `
+
+                            <button class="btn-add-dias" onclick="modificarDiasUser(${index}, 10)">+10 Días</button>
+
+                            <button class="btn-rem-dias" onclick="modificarDiasUser(${index}, -10)">-10 Días</button>
+
+                            <button class="btn-del-user" onclick="eliminarUsuarioSistema(${index})">Eliminar</button>
+
+                        `}
+
+                    </td>
+
+                </tr>`;
+
+            });
+
+        }
+
+
+
+        function modificarDiasUser(index, cantidad) {
+
+            usuarios[index].diasRestantes = Math.max(0, (usuarios[index].diasRestantes || 0) + cantidad);
+
+            localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
+
+            alert(`Suscripción actualizada. Nuevos días: ${usuarios[index].diasRestantes}`);
+
+            dibujarAdminPanel();
+
+        }
+
+
+
+        function eliminarUsuarioSistema(index) {
+
+            if(confirm(`¿Seguro de borrar permanentemente al usuario: ${usuarios[index].nombre}?`)) {
+
+                usuarios.splice(index, 1);
+
+                localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
+
+                alert("Cuenta eliminada del servidor.");
+
+                dibujarAdminPanel();
+
+            }
+
+        }
+
+
+
+        function salir() {
+
+            if(confirm("¿Seguro que desea salir?")) {
+
+                localStorage.removeItem('RYM_SESSION_SYSTEM');
+
+                location.reload();
+
+            }
+
+        }
+
+
+
+        // --- GESTIÓN DE PRÉSTAMOS ---
+
+        function cambiarV(id) {
+
+            document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
+
+            document.getElementById(id).classList.add('activa');
+
+        }
+
+        function abrirM(id) { document.getElementById(id).style.display = 'flex'; }
+
+        function cerrarM(id) { document.getElementById(id).style.display = 'none'; }
+
+
+
+        function guardarP() {
+
+            const cli = document.getElementById('n-cli').value.trim();
+
+            const ced = document.getElementById('n-ced').value.trim();
+
+            const mon = parseFloat(document.getElementById('n-mon').value);
+
+            const pla = document.getElementById('n-pla').value;
+
+            const cuo = parseInt(document.getElementById('n-cuo').value);
+
+
+
+            if(cli && mon && cuo) {
+
+                const reportado = prestamos.find(p => p.cli.toUpperCase() === cli.toUpperCase() && p.enSicla === true);
+
+                if(reportado) return alert("⚠️ BLOQUEADO: Este cliente aparece 'EN SICLA'.");
+
+                
+
+                prestamos.push({id: Date.now(), creador: sesion.correo, cli, ced, mon, pag: 0, pla, cuo, numPagos: 0, enSicla: false});
+
+                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
+
+                cerrarM('m-nue');
+
+                dibujar(false);
+
+                document.getElementById('n-cli').value = ''; 
+
+                document.getElementById('n-ced').value = ''; 
+
+                document.getElementById('n-mon').value = '';
+
+                document.getElementById('n-cuo').value = '';
+
+            }
+
+        }
+
+
+
+        function dibujar(esAdmin) {
+
+            const body = document.getElementById('t-body');
+
+            body.innerHTML = '';
+
+            let total = 0;
+
+            prestamos.forEach(p => {
+
+                if(sesion && p.creador === sesion.correo) {
+
+                    const resta = p.mon - p.pag;
+
+                    total += resta;
+
+                    const fraseSicla = p.enSicla ? '<span class="badge-sicla">EN SICLA</span>' : '';
+
+                    body.innerHTML += `<tr>
+
+                        <td><b>${p.cli}</b><br><small>${p.ced || ''}</small> ${fraseSicla}</td>
+
+                        <td>${p.numPagos || 0}/${p.cuo}</td>
+
+                        <td>${p.pla}</td>
+
+                        <td>${p.mon.toLocaleString()}</td>
+
+                        <td style="color:${resta === 0 ? 'green' : 'red'}; font-weight:bold;">${resta === 0 ? 'SALDADO' : resta.toLocaleString()}</td>
+
+                        <td style="display:flex; gap:5px;">
+
+                            <button class="btn-v" onclick="cobrar(${p.id})">$</button>
+
+                            <button class="btn-v" style="background:#dc3545;" onclick="menuAcciones(${p.id})">⚙️</button>
+
+                        </td>
+
+                    </tr>`;
+
+                }
+
+            });
+
+            document.getElementById('total-calle').innerText = total.toLocaleString();
+
+        }
+
+
+
+        function cobrar(id) {
+
+            const p = prestamos.find(x => x.id === id);
+
+            if(p.pag >= p.mon) return alert("Este préstamo ya está saldado.");
+
+            const sugerido = (p.mon / p.cuo).toFixed(2);
+
+            const monto = prompt(`Cobrar a ${p.cli}. Cuota sugerida: RD$ ${sugerido}`);
+
+            if(monto && !isNaN(monto)) {
+
+                p.pag += parseFloat(monto);
+
+                p.numPagos = (p.numPagos || 0) + 1;
+
+                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
+
+                document.getElementById('rf').innerText = new Date().toLocaleString();
+
+                document.getElementById('rc').innerText = p.cli;
+
+                document.getElementById('r-ced').innerText = p.ced || 'N/A';
+
+                document.getElementById('rtq').innerText = `${p.numPagos}/${p.cuo}`;
+
+                document.getElementById('rp').innerText = p.pla;
+
+                document.getElementById('rm').innerText = parseFloat(monto).toLocaleString();
+
+                document.getElementById('rq').innerText = sugerido;
+
+                document.getElementById('rr').innerText = (p.mon - p.pag).toLocaleString();
+
+                abrirM('m-recibo');
+
+                dibujar(false);
+
+            }
+
+        }
+
+
+
+        function menuAcciones(id) {
+
+            const opcion = prompt("ACCIONES DISPONIBLES:\n1. GESTIONAR SICLA\n2. SALDAR PRÉSTAMO\n3. REENGANCHE (Nuevo monto)\n4. ELIMINAR CLIENTE\n\nEscriba el número:");
+
+            if(opcion === "1") toggleSicla(id);
+
+            else if(opcion === "2") saldarPrestamo(id);
+
+            else if(opcion === "3") renganche(id);
+
+            else if(opcion === "4") eliminarCliente(id);
+
+        }
+
+
+
+        function renganche(id) {
+
+            const p = prestamos.find(x => x.id === id);
+
+            const restaActual = p.mon - p.pag;
+
+            const nuevoMonto = prompt(`REENGANCHE para ${p.cli}\nDeuda actual: RD$ ${restaActual.toLocaleString()}\n\nIngrese el NUEVO MONTO a prestar (Se le sumará la deuda actual):`);
+
+            
+
+            if(nuevoMonto && !isNaN(nuevoMonto)) {
+
+                const montoTotal = parseFloat(nuevoMonto) + restaActual;
+
+                const nuevasCuotas = prompt("Ingrese la cantidad de cuotas para este reenganche:");
+
+                const nuevoPlan = prompt("Ingrese el plan (Diario, Semanal, Quincenal, Mensual):", p.pla);
+
+
+
+                if(nuevasCuotas && !isNaN(nuevasCuotas)) {
+
+                    p.mon = montoTotal;
+
+                    p.pag = 0; 
+
+                    p.numPagos = 0; 
+
+                    p.cuo = parseInt(nuevasCuotas);
+
+                    p.pla = nuevoPlan;
+
+                    
+
+                    localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
+
+                    alert(`Reenganche exitoso.\nNuevo Monto Total: RD$ ${montoTotal.toLocaleString()}`);
+
+                    dibujar(false);
+
+                }
+
+            }
+
+        }
+
+
+
+        function toggleSicla(id) {
+
+            const p = prestamos.find(x => x.id === id);
+
+            const menuSicla = prompt(`GESTIÓN DE SICLA - ${p.cli}\n1. PONER EN SICLA\n2. QUITAR DE SICLA`);
+
+            if(menuSicla === "1") { p.enSicla = true; alert("Reportado."); } 
+
+            else if(menuSicla === "2") { p.enSicla = false; alert("Quitado."); }
+
+            localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
+
+            dibujar(false);
+
+        }
+
+
+
+        function saldarPrestamo(id) {
+
+            const p = prestamos.find(x => x.id === id);
+
+            if(confirm(`¿Saldar deuda de ${p.cli}?`)) {
+
+                p.pag = p.mon; p.numPagos = p.cuo;
+
+                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
+
+                dibujar(false);
+
+            }
+
+        }
+
+
+
+        function eliminarCliente(id) {
+
+            const pIndex = prestamos.findIndex(x => x.id === id);
+
+            if(confirm("¿Eliminar permanentemente?")) {
+
+                prestamos.splice(pIndex, 1);
+
+                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
+
+                dibujar(false);
+
+            }
+
+        }
+
+    </script>
+
+</body>
+
+</html>
