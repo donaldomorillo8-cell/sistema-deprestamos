@@ -239,7 +239,7 @@
          
         let prestamos = JSON.parse(localStorage.getItem('RYM_DATA_V2')) || [];
         let sesion = JSON.parse(localStorage.getItem('RYM_SESSION_SYSTEM')) || null;
-        let ultimoTicketTexto = ""; 
+        let ultimoTicketTextoRaw = ""; 
 
         function aplicarEstilos() {
             let actualLogo = (sesion && sesion.logoPersonal) ? sesion.logoPersonal : config.logo;
@@ -580,7 +580,7 @@
             const p = prestamos.find(x => x.id === id);
             if(p.pag >= p.mon) return alert("Este préstamo ya está saldado.");
             const sugerido = (p.mon / p.cuo).toFixed(2);
-            const monto = prompt(`Cobrar a ${p.cli}. Cuota sugerida (incluye recargos si existen): RD$ ${sugerido}`);
+            const monto = prompt(`Cobrar a ${p.cli}. Cuota sugerida: RD$ ${sugerido}`);
             
             if(monto && !isNaN(monto)) {
                 p.pag += parseFloat(monto);
@@ -607,6 +607,7 @@
                 abrirM('m-recibo');
                 dibujar(false);
 
+                // ESTRUCTURA CON TAMAÑOS GRANDES PARA EL PAPEL TÉRMICO
                 let formatoTicket = "";
                 formatoTicket += `%%center%%%%big%%${nombreEmpresa}\n`;
                 formatoTicket += "--------------------------------\n";
@@ -622,18 +623,35 @@
                 formatoTicket += "%%center%%A RECLAMOS SIN TICKET\n";
                 formatoTicket += "--------------------------------\n\n\n\n";
 
-                ultimoTicketTexto = encodeURIComponent(formatoTicket);
+                ultimoTicketTextoRaw = formatoTicket;
                 
-                window.location.href = `intent:#Intent;scheme=rawbt;package=ru.a2020.rawbtprinter;S.text=${ultimoTicketTexto};end`;
+                // MANDA LA ORDEN USANDO EL PUERTO LOCAL (MÁXIMA COMPATIBILIDAD CON WEBVIEW / WEBINTOAPP)
+                despacharImpresionRawBT(formatoTicket);
             }
         }
 
         function reImprimirRawBTActual() {
-            if(ultimoTicketTexto) {
-                window.location.href = `intent:#Intent;scheme=rawbt;package=ru.a2020.rawbtprinter;S.text=${ultimoTicketTexto};end`;
+            if(ultimoTicketTextoRaw) {
+                despacharImpresionRawBT(ultimoTicketTextoRaw);
             } else {
                 alert("No hay ningún ticket en cola para imprimir.");
             }
+        }
+
+        // FUNCIÓN CLAVE: Comunicación mediante AJAX local para saltarse restricciones de WebView
+        function despacharImpresionRawBT(textoTicket) {
+            const enlaceServidorLocal = "http://localhost:40213/print";
+            const req = new XMLHttpRequest();
+            req.open("POST", enlaceServidorLocal, true);
+            req.setRequestHeader("Content-Type", "text/plain; charset=utf-8");
+            
+            req.onreadystatechange = function () {
+                if (req.readyState === 4 && req.status !== 200) {
+                    // Si el puerto interno falla, cae de vuelta en el intent nativo por si acaso
+                    window.location.href = `intent:#Intent;scheme=rawbt;package=ru.a2020.rawbtprinter;S.text=${encodeURIComponent(textoTicket)};end`;
+                }
+            };
+            req.send(textoTicket);
         }
 
         function menuAcciones(id) {
