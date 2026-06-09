@@ -239,7 +239,7 @@
          
         let prestamos = JSON.parse(localStorage.getItem('RYM_DATA_V2')) || [];
         let sesion = JSON.parse(localStorage.getItem('RYM_SESSION_SYSTEM')) || null;
-        let ultimoTicketTexto = ""; // Guarda el ultimo texto impreso para el boton de re-impresión
+        let ultimoTicketTexto = ""; 
 
         function aplicarEstilos() {
             let actualLogo = (sesion && sesion.logoPersonal) ? sesion.logoPersonal : config.logo;
@@ -576,7 +576,6 @@
             document.getElementById('total-ganancias').innerText = totalGananciasEstimadas.toLocaleString(undefined, {minimumFractionDigits: 2});
         }
 
-        // FUNCIÓN COBRAR MODIFICADA CON TAMAÑO DE LETRA DE PAPEL OPTIMIZADO Y ADVERTENCIA DE RECLAMOS
         function cobrar(id) {
             const p = prestamos.find(x => x.id === id);
             if(p.pag >= p.mon) return alert("Este préstamo ya está saldado.");
@@ -597,7 +596,6 @@
                 const pagoFormateado = parseFloat(monto).toLocaleString();
                 const nombreEmpresa = (sesion && sesion.nombre) ? sesion.nombre : config.nombre;
 
-                // 1. Actualizar campos en el modal visual de la pantalla
                 document.getElementById('rf').innerText = fechaActual;
                 document.getElementById('rc').innerText = p.cli;
                 document.getElementById('r-ced').innerText = p.ced || 'N/A';
@@ -609,7 +607,6 @@
                 abrirM('m-recibo');
                 dibujar(false);
 
-                // 2. ARMAR EL CONTENIDO DEL TICKET PARA LA IMPRESORA FÍSICA (LETRAS EN GRANDES Y CENTRADAS)
                 let formatoTicket = "";
                 formatoTicket += `%%center%%%%big%%${nombreEmpresa}\n`;
                 formatoTicket += "--------------------------------\n";
@@ -627,12 +624,10 @@
 
                 ultimoTicketTexto = encodeURIComponent(formatoTicket);
                 
-                // Abre RawBT y gatilla la impresión física inmediatamente
                 window.location.href = `intent:#Intent;scheme=rawbt;package=ru.a2020.rawbtprinter;S.text=${ultimoTicketTexto};end`;
             }
         }
 
-        // Función para permitir re-imprimir el mismo ticket desde el botón del modal si es necesario
         function reImprimirRawBTActual() {
             if(ultimoTicketTexto) {
                 window.location.href = `intent:#Intent;scheme=rawbt;package=ru.a2020.rawbtprinter;S.text=${ultimoTicketTexto};end`;
