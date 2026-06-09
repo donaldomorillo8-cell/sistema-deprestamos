@@ -31,8 +31,12 @@
         th { background: var(--negro); color: white; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
         
-        .ticket { background: white; padding: 25px; width: 320px; text-align: center; border: 1px dashed #333; font-family: monospace; font-size: 15px; }
-        .ticket h3 { font-size: 22px; margin: 10px 0; }
+        /* DISEÑO DE RECIBO MAS GRANDE */
+        .ticket { background: white; padding: 35px; width: 420px; text-align: center; border: 2px dashed #222; font-family: 'Courier New', monospace; font-size: 20px; font-weight: bold; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        .ticket h3 { font-size: 30px; margin: 15px 0; font-weight: 900; letter-spacing: 1px; }
+        .ticket hr { border: 1px dashed #000; margin: 15px 0; }
+        .ticket p { margin: 12px 0; }
+        .ticket .btn-ticket { padding: 18px; font-size: 18px; margin-top: 10px; }
         
         .seccion { display: none; }
         .activa { display: block; }
@@ -184,7 +188,7 @@
             <input type="text" id="n-cli" placeholder="Nombre del Cliente">
             <input type="text" id="n-ced" placeholder="Cédula del Cliente">
             <input type="number" id="n-mon" placeholder="Capital Base Entregado RD$">
-            <input type="number" id="n-int" placeholder="% Porcentaje de Interés (Ej: 20)" value="20">
+            <input type="number" id="n-int" placeholder="% Porcentaje de Interés (Ej: 30)" value="30">
             <select id="n-pla">
                 <option value="Diario">Diario</option>
                 <option value="Semanal">Semanal</option>
@@ -199,28 +203,28 @@
     </div>
 
     <div id="m-recibo" class="modal">
-        <div class="ticket" id="r-print">
-            <div class="logo-c" id="logo-ticket" style="width:95px; height:95px; font-size:18px;">R&M</div>
+        <div class="ticket" id="r-print" style="width: 440px;">
+            <div class="logo-c" id="logo-ticket" style="width:120px; height:120px; font-size:24px; border: 4px solid var(--oro);">R&M</div>
             <h3 id="tit-ticket">R Y M FINANZAS</h3>
             <hr>
-            <div style="text-align:left; font-size:15px; line-height: 1.6;">
+            <div style="text-align:left; line-height: 1.8;">
                 <p>FECHA: <span id="rf"></span></p>
                 <p>CLIENTE: <span id="rc"></span></p>
                 <p style="display:none;">CÉDULA: <span id="r-ced"></span></p>
                 <p>CUOTAS: <b id="rtq"></b></p>
                 <p style="display:none;">PLAN: <span id="rp"></span></p>
-                <p>PAGO: <b>RD$ <span id="rm"></span></b></p>
-                <div id="wrapper-rq" style="display:none; background:#e8f5e9; padding:8px; border:1px solid #c8e6c9; margin:10px 0;">
+                <p>PAGO: <b style="font-size: 22px;">RD$ <span id="rm"></span></b></p>
+                <div id="wrapper-rq" style="display:none; background:#e8f5e9; padding:10px; border:1px solid #c8e6c9; margin:12px 0;">
                     Recomendación cuota: <br><b>RD$ <span id="rq"></span></b>
                 </div>
-                <p>RESTANTE: <b style="color:red;">RD$ <span id="rr"></span></b></p>
+                <p>RESTANTE: <b style="color:red; font-size: 22px;">RD$ <span id="rr"></span></b></p>
             </div>
             <hr>
-            <p style="font-size: 12px; font-weight: bold; margin: 15px 0; color: #333; line-height:1.4;">No nos hacemos responsables de un pago sin recivo</p>
+            <p style="font-size: 15px; font-weight: bold; margin: 20px 0; color: #111; line-height:1.5; text-transform: uppercase;">No nos hacemos responsables de un pago sin recibo</p>
             <hr>
             <div class="no-p">
-                <button class="btn" style="background:#28a745;" onclick="window.print()">IMPRIMIR</button>
-                <button class="btn" style="background:red; margin-top:5px;" onclick="cerrarM('m-recibo')">CERRAR</button>
+                <button class="btn btn-ticket" style="background:#28a745;" onclick="window.print()">IMPRIMIR RECIBO</button>
+                <button class="btn btn-ticket" style="background:red; margin-top:8px;" onclick="cerrarM('m-recibo')">CERRAR</button>
             </div>
         </div>
     </div>
@@ -288,16 +292,13 @@
             }
         };
 
-        /* LÓGICA DE MORA AUTOMÁTICA: Ejecutada al cargar la aplicación */
         function verificarYCalcularMoras() {
             let modificado = false;
             const ahora = Date.now();
             
             prestamos.forEach(p => {
-                // Si ya saldó el préstamo completo, no aplicar más mora.
                 if(p.pag >= p.mon) return;
 
-                // Si no hay fecha de último pago, usar el timestamp de creación del préstamo
                 const ultimaFechaOperacion = p.fechaUltimoPago || p.id;
                 const diferenciaTiempo = ahora - ultimaFechaOperacion;
                 const diasTranscurridos = Math.floor(diferenciaTiempo / (1000 * 60 * 60 * 24));
@@ -306,10 +307,9 @@
                     const ciclosMora = Math.floor(diasTranscurridos / 5);
                     const moraAcumuladaAAgregar = ciclosMora * 35;
                     
-                    // Controlar que no dupliquemos moras ya procesadas en el mismo tramo de días
                     if(!p.moraAcumulada || p.moraAcumulada < moraAcumuladaAAgregar) {
                         const diferenciaMoraReal = moraAcumuladaAAgregar - (p.moraAcumulada || 0);
-                        p.mon += diferenciaMoraReal; // Se añade directamente a la deuda total del cliente
+                        p.mon += diferenciaMoraReal;
                         p.moraAcumulada = moraAcumuladaAAgregar;
                         modificado = true;
                     }
@@ -498,7 +498,6 @@
         function abrirM(id) { document.getElementById(id).style.display = 'flex'; }
         function cerrarM(id) { document.getElementById(id).style.display = 'none'; }
 
-        /* NUEVA LOGICA DE GUARDADO CON SEPARACIÓN DE CAPITAL E INTERESES */
         function guardarP() {
             const cli = document.getElementById('n-cli').value.trim();
             const ced = document.getElementById('n-ced').value.trim();
@@ -511,7 +510,6 @@
                 const reportado = prestamos.find(p => p.cli.toUpperCase() === cli.toUpperCase() && p.enSicla === true);
                 if(reportado) return alert("⚠️ BLOQUEADO: Este cliente aparece 'EN SICLA'.");
                 
-                // Calcular el total real que va para la calle sumando el interés
                 const montoInteres = capitalBase * (porcentajeInteres / 100);
                 const montoTotalCobrar = capitalBase + montoInteres;
 
@@ -520,16 +518,16 @@
                     creador: sesion.correo, 
                     cli, 
                     ced, 
-                    capitalOriginal: capitalBase, // Lo que tú prestaste
-                    interesPactado: montoInteres,  // Tu ganancia esperada sin moras
-                    mon: montoTotalCobrar,         // El balance total dinámico (Suma moras automáticas aquí)
+                    capitalOriginal: capitalBase, 
+                    interesPactado: montoInteres,  
+                    mon: montoTotalCobrar,         
                     pag: 0, 
                     pla, 
                     cuo, 
                     numPagos: 0, 
                     enSicla: false,
                     moraAcumulada: 0,
-                    fechaUltimoPago: null          // Rastreador temporal para las moras de 5 días
+                    fechaUltimoPago: null          
                 });
                 
                 localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
@@ -551,10 +549,9 @@
                         const resta = p.mon - p.pag;
                         totalCalle += resta;
                         
-                        // Ganancia proyectada = Interés original + moras añadidas al cliente
                         const gananciaPrestamo = (p.interesPactado || 0) + (p.moraAcumulada || 0);
                         if (resta > 0) {
-                            totalGananciasEstimadas += gananciaPrestamo * (resta / p.mon); // Ganancia proporcional a lo que falta por cobrar
+                            totalGananciasEstimadas += gananciaPrestamo * (resta / p.mon); 
                         }
 
                         const fraseSicla = p.enSicla ? '<span class="badge-sicla">EN SICLA</span>' : '';
@@ -587,9 +584,7 @@
                 p.pag += parseFloat(monto);
                 p.numPagos = (p.numPagos || 0) + 1;
                 
-                // Resetear el temporizador de la mora al momento exacto de este pago exitoso
                 p.fechaUltimoPago = Date.now(); 
-                // Al abonar, se calcula un recalculo parcial de la mora en la base de datos para su próximo ciclo de 5 días
                 p.moraAcumulada = 0; 
 
                 localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
@@ -619,11 +614,10 @@
             const restaActual = p.mon - p.pag;
             const nuevoMonto = prompt(`REENGANCHE para ${p.cli}\nDeuda actual con mora/interés: RD$ ${restaActual.toLocaleString()}\n\nIngrese el NUEVO CAPITAL BASE a entregar:`);
             if(nuevoMonto && !isNaN(nuevoMonto)) {
-                const porcentajeInteres = parseFloat(prompt("Ingrese el % de interés para este nuevo reenganche:", "20")) || 0;
+                const porcentajeInteres = parseFloat(prompt("Ingrese el % de interés para este nuevo reenganche:", "30")) || 0;
                 const nuevoCapitalSumado = parseFloat(nuevoMonto);
                 const nuevoInteres = nuevoCapitalSumado * (porcentajeInteres / 100);
                 
-                // La nueva deuda total arrastra lo que quedaba del préstamo anterior + el nuevo flujo con su interés
                 p.mon = restaActual + nuevoCapitalSumado + nuevoInteres;
                 p.capitalOriginal = (p.capitalOriginal || p.mon) + nuevoCapitalSumado;
                 p.interesPactado = (p.interesPactado || 0) + nuevoInteres;
