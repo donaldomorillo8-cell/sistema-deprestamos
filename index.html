@@ -11,7 +11,6 @@
             font-family: 'Segoe UI', sans-serif;
             margin: 0;
             padding: 10px;
-            /* Se ha reemplazado la imagen anterior por el degradado exacto de tu imagen */
             background: linear-gradient(135deg, #a4c2fe 0%, #cbd6ff 30%, #fcd2f9 70%, #ff8bf3 100%);
             background-size: cover;
             background-position: center;
@@ -31,11 +30,15 @@
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
         th { background: var(--negro); color: white; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
-        .ticket { background: white; padding: 20px; width: 280px; text-align: center; border: 1px dashed #333; font-family: monospace; }
+        
+        .ticket { background: white; padding: 25px; width: 320px; text-align: center; border: 1px dashed #333; font-family: monospace; font-size: 15px; }
+        .ticket h3 { font-size: 22px; margin: 10px 0; }
+        
         .seccion { display: none; }
         .activa { display: block; }
         .enlace-registro { display: block; margin-top: 20px; color: var(--negro); text-decoration: none; font-size: 14px; font-weight: bold; }
         .badge-sicla { background: red; color: white; padding: 2px 5px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
+        .badge-mora { background: #ffc107; color: black; padding: 2px 5px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
         .aviso-vencido { color: #721c24; background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 8px; margin-top: 15px; display: none; }
         .aviso-vencido button { background: #dc3545; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%; }
         .btn-add-dias { background: #28a745; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 2px;}
@@ -80,9 +83,15 @@
          
         <input type="text" id="busqueda" placeholder="🔍 Buscar por nombre o cédula..." onkeyup="dibujar(false)">
 
-        <div style="background:var(--negro); color:var(--oro); padding:15px; border-radius:10px; margin:20px 0;">
-            Capital en Calle: <br><strong>RD$ <span id="total-calle">0.00</span></strong>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0;">
+            <div style="background:var(--negro); color:var(--oro); padding:15px; border-radius:10px;">
+                Capital Neto en Calle: <br><strong>RD$ <span id="total-calle">0.00</span></strong>
+            </div>
+            <div style="background:#28a745; color:white; padding:15px; border-radius:10px;">
+                Ganancias Estimadas: <br><strong>RD$ <span id="total-ganancias">0.00</span></strong>
+            </div>
         </div>
+
         <div style="overflow-x:auto;">
             <table>
                 <thead>
@@ -90,8 +99,8 @@
                         <th>Cliente</th>
                         <th>Cuotas</th>
                         <th>Plan</th>
-                        <th>Monto</th>
-                        <th>Resta</th>
+                        <th>Total Prestado</th>
+                        <th>Resta Actual</th>
                         <th>Acción</th>
                     </tr>
                 </thead>
@@ -174,7 +183,8 @@
             <h3>Nuevo Préstamo</h3>
             <input type="text" id="n-cli" placeholder="Nombre del Cliente">
             <input type="text" id="n-ced" placeholder="Cédula del Cliente">
-            <input type="number" id="n-mon" placeholder="Monto Total RD$">
+            <input type="number" id="n-mon" placeholder="Capital Base Entregado RD$">
+            <input type="number" id="n-int" placeholder="% Porcentaje de Interés (Ej: 20)" value="20">
             <select id="n-pla">
                 <option value="Diario">Diario</option>
                 <option value="Semanal">Semanal</option>
@@ -190,21 +200,23 @@
 
     <div id="m-recibo" class="modal">
         <div class="ticket" id="r-print">
-            <div class="logo-c" id="logo-ticket" style="width:50px; height:50px; font-size:14px;">R&M</div>
+            <div class="logo-c" id="logo-ticket" style="width:95px; height:95px; font-size:18px;">R&M</div>
             <h3 id="tit-ticket">R Y M FINANZAS</h3>
             <hr>
-            <div style="text-align:left; font-size:12px;">
+            <div style="text-align:left; font-size:15px; line-height: 1.6;">
                 <p>FECHA: <span id="rf"></span></p>
                 <p>CLIENTE: <span id="rc"></span></p>
-                <p>CÉDULA: <span id="r-ced"></span></p>
+                <p style="display:none;">CÉDULA: <span id="r-ced"></span></p>
                 <p>CUOTAS: <b id="rtq"></b></p>
-                <p>PLAN: <span id="rp"></span></p>
+                <p style="display:none;">PLAN: <span id="rp"></span></p>
                 <p>PAGO: <b>RD$ <span id="rm"></span></b></p>
-                <div style="background:#e8f5e9; padding:8px; border:1px solid #c8e6c9; margin:10px 0;">
+                <div id="wrapper-rq" style="display:none; background:#e8f5e9; padding:8px; border:1px solid #c8e6c9; margin:10px 0;">
                     Recomendación cuota: <br><b>RD$ <span id="rq"></span></b>
                 </div>
                 <p>RESTANTE: <b style="color:red;">RD$ <span id="rr"></span></b></p>
             </div>
+            <hr>
+            <p style="font-size: 12px; font-weight: bold; margin: 15px 0; color: #333; line-height:1.4;">No nos hacemos responsables de un pago sin recivo</p>
             <hr>
             <div class="no-p">
                 <button class="btn" style="background:#28a745;" onclick="window.print()">IMPRIMIR</button>
@@ -225,7 +237,6 @@
         let sesion = JSON.parse(localStorage.getItem('RYM_SESSION_SYSTEM')) || null;
 
         function aplicarEstilos() {
-            // Si el usuario en sesión tiene un logo propio asignado por admin, priorizar ese logo
             let actualLogo = (sesion && sesion.logoPersonal) ? sesion.logoPersonal : config.logo;
             let actualNombre = (sesion && sesion.nombre) ? sesion.nombre : config.nombre;
 
@@ -237,7 +248,7 @@
                     el.innerText = '';
                 } else {
                     el.style.backgroundImage = 'none';
-                    el.innerText = actualNombre.substring(0, 5); // Acortado si es largo
+                    el.innerText = actualNombre.substring(0, 5);
                 }
             });
             document.getElementById('tit-ticket').innerText = actualNombre;
@@ -271,10 +282,44 @@
                 const btnAdmin = document.getElementById('btn-adm');
                 if(sesion.rango === 'SUPER-ADMIN' || sesion.rango === 'ADMIN 1') btnAdmin.style.display = 'block';
                 cambiarV('v-sis');
+                verificarYCalcularMoras();
                 dibujar(false);
                 dibujarAdminPanel();
             }
         };
+
+        /* LÓGICA DE MORA AUTOMÁTICA: Ejecutada al cargar la aplicación */
+        function verificarYCalcularMoras() {
+            let modificado = false;
+            const ahora = Date.now();
+            
+            prestamos.forEach(p => {
+                // Si ya saldó el préstamo completo, no aplicar más mora.
+                if(p.pag >= p.mon) return;
+
+                // Si no hay fecha de último pago, usar el timestamp de creación del préstamo
+                const ultimaFechaOperacion = p.fechaUltimoPago || p.id;
+                const diferenciaTiempo = ahora - ultimaFechaOperacion;
+                const diasTranscurridos = Math.floor(diferenciaTiempo / (1000 * 60 * 60 * 24));
+                
+                if (diasTranscurridos >= 5) {
+                    const ciclosMora = Math.floor(diasTranscurridos / 5);
+                    const moraAcumuladaAAgregar = ciclosMora * 35;
+                    
+                    // Controlar que no dupliquemos moras ya procesadas en el mismo tramo de días
+                    if(!p.moraAcumulada || p.moraAcumulada < moraAcumuladaAAgregar) {
+                        const diferenciaMoraReal = moraAcumuladaAAgregar - (p.moraAcumulada || 0);
+                        p.mon += diferenciaMoraReal; // Se añade directamente a la deuda total del cliente
+                        p.moraAcumulada = moraAcumuladaAAgregar;
+                        modificado = true;
+                    }
+                }
+            });
+
+            if(modificado) {
+                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
+            }
+        }
 
         function entrar() {
             const cor = document.getElementById('l-cor').value.trim();
@@ -294,10 +339,9 @@
                 const btnAdmin = document.getElementById('btn-adm');
                 if(user.rango === 'SUPER-ADMIN' || user.rango === 'ADMIN 1') btnAdmin.style.display = 'block';
                 
-                // Actualizar vistas y estilos basados en el usuario logueado (por si tiene logo propio)
                 aplicarEstilos();
-
                 cambiarV('v-sis');
+                verificarYCalcularMoras();
                 dibujar(false);
                 dibujarAdminPanel();
             } else { alert("Datos incorrectos"); }
@@ -322,7 +366,6 @@
             abrirM('m-pago');
         }
 
-        // NUEVA FUNCIÓN: Ejecuta la creación desde el Panel de Control
         function crearCuentaAdmin() {
             const nom = document.getElementById('adm-new-nom').value.trim();
             const cor = document.getElementById('adm-new-cor').value.trim();
@@ -338,22 +381,12 @@
 
             const ahora = new Date().toLocaleString();
             usuarios.push({
-                correo: cor,
-                clave: cla,
-                nombre: nom.toUpperCase(),
-                plan: dias > 300 ? 'Anual' : (dias > 15 ? 'Mensual' : 'Personalizado'),
-                diasRestantes: dias,
-                rango: rango.toUpperCase(),
-                panel: true,
-                fechaRegistro: ahora,
-                ip: 'Creado por Admin',
-                logoPersonal: logo
+                correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: dias > 300 ? 'Anual' : (dias > 15 ? 'Mensual' : 'Personalizado'), diasRestantes: dias, rango: rango.toUpperCase(), panel: true, fechaRegistro: ahora, ip: 'Creado por Admin', logoPersonal: logo
             });
 
             localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
             alert("Cuenta de " + nom + " creada exitosamente con rango: " + rango);
             
-            // Limpiar campos del formulario admin
             document.getElementById('adm-new-nom').value = '';
             document.getElementById('adm-new-cor').value = '';
             document.getElementById('adm-new-cla').value = '';
@@ -413,7 +446,6 @@
             bodyAdmin.innerHTML = '';
             usuarios.forEach((u, index) => {
                 const esMaestro = u.correo === 'monteroroberto124@gmail.com';
-                // Renderizar preview de logo si posee uno propio
                 const imgHTML = u.logoPersonal ? `<img src="${u.logoPersonal}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : '<span style="color:gray; font-size:11px;">Por defecto</span>';
                 
                 bodyAdmin.innerHTML += `<tr>
@@ -424,7 +456,7 @@
                     <td>${u.fechaRegistro || 'No registrada'}</td>
                     <td><i>${u.ip || 'Desconocida'}</i></td>
                     <td><span style="font-weight:bold; color:var(--oro);">${u.plan || 'Ninguno'}</span></td>
-                    <td><b>${u.diasRestantes} días</b></td>
+                    <td><b>${u.diasRestantes} days</b></td>
                     <td>
                         ${esMaestro ? '<small style="color:gray;">Cuenta Maestra Raíz</small>' : `
                             <button class="btn-add-dias" onclick="modificarDiasUser(${index}, 10)">+10 Días</button>
@@ -466,16 +498,40 @@
         function abrirM(id) { document.getElementById(id).style.display = 'flex'; }
         function cerrarM(id) { document.getElementById(id).style.display = 'none'; }
 
+        /* NUEVA LOGICA DE GUARDADO CON SEPARACIÓN DE CAPITAL E INTERESES */
         function guardarP() {
             const cli = document.getElementById('n-cli').value.trim();
             const ced = document.getElementById('n-ced').value.trim();
-            const mon = parseFloat(document.getElementById('n-mon').value);
+            const capitalBase = parseFloat(document.getElementById('n-mon').value);
+            const porcentajeInteres = parseFloat(document.getElementById('n-int').value) || 0;
             const pla = document.getElementById('n-pla').value;
             const cuo = parseInt(document.getElementById('n-cuo').value);
-            if(cli && mon && cuo) {
+            
+            if(cli && capitalBase && cuo) {
                 const reportado = prestamos.find(p => p.cli.toUpperCase() === cli.toUpperCase() && p.enSicla === true);
                 if(reportado) return alert("⚠️ BLOQUEADO: Este cliente aparece 'EN SICLA'.");
-                prestamos.push({id: Date.now(), creador: sesion.correo, cli, ced, mon, pag: 0, pla, cuo, numPagos: 0, enSicla: false});
+                
+                // Calcular el total real que va para la calle sumando el interés
+                const montoInteres = capitalBase * (porcentajeInteres / 100);
+                const montoTotalCobrar = capitalBase + montoInteres;
+
+                prestamos.push({
+                    id: Date.now(), 
+                    creador: sesion.correo, 
+                    cli, 
+                    ced, 
+                    capitalOriginal: capitalBase, // Lo que tú prestaste
+                    interesPactado: montoInteres,  // Tu ganancia esperada sin moras
+                    mon: montoTotalCobrar,         // El balance total dinámico (Suma moras automáticas aquí)
+                    pag: 0, 
+                    pla, 
+                    cuo, 
+                    numPagos: 0, 
+                    enSicla: false,
+                    moraAcumulada: 0,
+                    fechaUltimoPago: null          // Rastreador temporal para las moras de 5 días
+                });
+                
                 localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
                 cerrarM('m-nue');
                 dibujar(false);
@@ -486,15 +542,26 @@
             const body = document.getElementById('t-body');
             const filtro = document.getElementById('busqueda').value.toLowerCase();
             body.innerHTML = '';
-            let total = 0;
+            let totalCalle = 0;
+            let totalGananciasEstimadas = 0;
+
             prestamos.forEach(p => {
                 if(sesion && p.creador === sesion.correo) {
                     if (p.cli.toLowerCase().includes(filtro) || (p.ced && p.ced.toLowerCase().includes(filtro))) {
                         const resta = p.mon - p.pag;
-                        total += resta;
+                        totalCalle += resta;
+                        
+                        // Ganancia proyectada = Interés original + moras añadidas al cliente
+                        const gananciaPrestamo = (p.interesPactado || 0) + (p.moraAcumulada || 0);
+                        if (resta > 0) {
+                            totalGananciasEstimadas += gananciaPrestamo * (resta / p.mon); // Ganancia proporcional a lo que falta por cobrar
+                        }
+
                         const fraseSicla = p.enSicla ? '<span class="badge-sicla">EN SICLA</span>' : '';
+                        const fraseMora = (p.moraAcumulada && p.moraAcumulada > 0) ? `<span class="badge-mora">MORA: RD$ ${p.moraAcumulada}</span>` : '';
+
                         body.innerHTML += `<tr>
-                            <td><b>${p.cli}</b><br><small>${p.ced || ''}</small> ${fraseSicla}</td>
+                            <td><b>${p.cli}</b><br><small>${p.ced || ''}</small> ${fraseSicla} ${fraseMora}</td>
                             <td>${p.numPagos || 0}/${p.cuo}</td>
                             <td>${p.pla}</td>
                             <td>${p.mon.toLocaleString()}</td>
@@ -507,17 +574,24 @@
                     }
                 }
             });
-            document.getElementById('total-calle').innerText = total.toLocaleString();
+            document.getElementById('total-calle').innerText = totalCalle.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('total-ganancias').innerText = totalGananciasEstimadas.toLocaleString(undefined, {minimumFractionDigits: 2});
         }
 
         function cobrar(id) {
             const p = prestamos.find(x => x.id === id);
             if(p.pag >= p.mon) return alert("Este préstamo ya está saldado.");
             const sugerido = (p.mon / p.cuo).toFixed(2);
-            const monto = prompt(`Cobrar a ${p.cli}. Cuota sugerida: RD$ ${sugerido}`);
+            const monto = prompt(`Cobrar a ${p.cli}. Cuota sugerida (incluye recargos si existen): RD$ ${sugerido}`);
             if(monto && !isNaN(monto)) {
                 p.pag += parseFloat(monto);
                 p.numPagos = (p.numPagos || 0) + 1;
+                
+                // Resetear el temporizador de la mora al momento exacto de este pago exitoso
+                p.fechaUltimoPago = Date.now(); 
+                // Al abonar, se calcula un recalculo parcial de la mora en la base de datos para su próximo ciclo de 5 días
+                p.moraAcumulada = 0; 
+
                 localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
                 document.getElementById('rf').innerText = new Date().toLocaleString();
                 document.getElementById('rc').innerText = p.cli;
@@ -543,13 +617,24 @@
         function renganche(id) {
             const p = prestamos.find(x => x.id === id);
             const restaActual = p.mon - p.pag;
-            const nuevoMonto = prompt(`REENGANCHE para ${p.cli}\nDeuda actual: RD$ ${restaActual.toLocaleString()}\n\nIngrese el NUEVO MONTO a prestar:`);
+            const nuevoMonto = prompt(`REENGANCHE para ${p.cli}\nDeuda actual con mora/interés: RD$ ${restaActual.toLocaleString()}\n\nIngrese el NUEVO CAPITAL BASE a entregar:`);
             if(nuevoMonto && !isNaN(nuevoMonto)) {
-                const montoTotal = parseFloat(nuevoMonto) + restaActual;
-                const nuevasCuotas = prompt("Ingrese la cantidad de cuotas:");
+                const porcentajeInteres = parseFloat(prompt("Ingrese el % de interés para este nuevo reenganche:", "20")) || 0;
+                const nuevoCapitalSumado = parseFloat(nuevoMonto);
+                const nuevoInteres = nuevoCapitalSumado * (porcentajeInteres / 100);
+                
+                // La nueva deuda total arrastra lo que quedaba del préstamo anterior + el nuevo flujo con su interés
+                p.mon = restaActual + nuevoCapitalSumado + nuevoInteres;
+                p.capitalOriginal = (p.capitalOriginal || p.mon) + nuevoCapitalSumado;
+                p.interesPactado = (p.interesPactado || 0) + nuevoInteres;
+                p.pag = 0; 
+                p.numPagos = 0; 
+                p.moraAcumulada = 0;
+                p.fechaUltimoPago = Date.now();
+
+                const nuevasCuotas = prompt("Ingrese la cantidad de cuotas totales para el reenganche:");
                 if(nuevasCuotas && !isNaN(nuevasCuotas)) {
-                    p.mon = montoTotal;
-                    p.pag = 0; p.numPagos = 0; p.cuo = parseInt(nuevasCuotas);
+                    p.cuo = parseInt(nuevasCuotas);
                     localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
                     dibujar(false);
                 }
