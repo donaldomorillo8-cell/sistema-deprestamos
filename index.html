@@ -77,7 +77,7 @@
                 <button class="btn" style="width:auto; padding:10px 20px;" onclick="abrirM('m-nue')">+ NUEVO</button>
             </div>
         </div>
-       
+         
         <input type="text" id="busqueda" placeholder="🔍 Buscar por nombre o cédula..." onkeyup="dibujar(false)">
 
         <div style="background:var(--negro); color:var(--oro); padding:15px; border-radius:10px; margin:20px 0;">
@@ -107,13 +107,29 @@
             <h2 style="margin:0;">Panel de Monitoreo General</h2>
             <button class="btn" style="width:auto; padding:10px 20px; background:var(--negro); color:var(--oro); border:2px solid var(--oro);" onclick="cambiarV('v-sis')">VOLVER AL PANEL</button>
         </div>
+
+        <div style="background: #eee; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <h3 style="margin-top:0;">+ Crear Cuenta Personalizada</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <input type="text" id="adm-new-nom" placeholder="Nombre completo">
+                <input type="text" id="adm-new-cor" placeholder="Usuario / Correo">
+                <input type="password" id="adm-new-cla" placeholder="Contraseña">
+                <input type="text" id="adm-new-rango" placeholder="Rango (Ej: ADMIN 1, VENDEDOR)">
+                <input type="number" id="adm-new-dias" placeholder="Días de Suscripción" value="30">
+                <input type="text" id="adm-new-logo" placeholder="URL del Logo/Imagen personalizado (Opcional)">
+            </div>
+            <button class="btn" style="margin-top:10px; background: var(--negro); color: var(--oro); border: 1px solid var(--oro);" onclick="crearCuentaAdmin()">CREAR USUARIO</button>
+        </div>
+
         <h3>Cuentas Registradas en el Sistema</h3>
         <div style="overflow-x:auto;">
             <table>
                 <thead>
                     <tr>
+                        <th>Logo</th>
                         <th>Usuario / Correo</th>
                         <th>Nombre</th>
+                        <th>Rango</th>
                         <th>Fecha/Hora Registro</th>
                         <th>Dirección IP</th>
                         <th>Plan Activo</th>
@@ -164,6 +180,7 @@
                 <option value="Semanal">Semanal</option>
                 <option value="Quincenal">Quincenal</option>
                 <option value="Mensual">Mensual</option>
+                <option value="Anual">Anual</option>
             </select>
             <input type="number" id="n-cuo" placeholder="Cuotas (10, 20, 30...)">
             <button class="btn" onclick="guardarP()">GUARDAR</button>
@@ -199,26 +216,31 @@
     <script>
         let config = JSON.parse(localStorage.getItem('RYM_CONFIG')) || { nombre: 'R&M', logo: '' };
         let usuarios = JSON.parse(localStorage.getItem('RYM_USERS_DATABASE')) || [
-            {correo: 'donaldomorillo8@gmail.com', clave: 'donaldo020202', nombre: 'DONALDO MORILLO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1'},
-            {correo: 'robertomontero128@gmail.com', clave: 'rocio1234', nombre: 'ROBERT MONTERO', plan: 'Admin', diasRestantes: 9999, rango: 'ADMIN 1', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1'},
-            {correo: 'monteroroberto124@gmail.com', clave: 'rocio5020', nombre: 'ADMINISTRADOR MAESTRO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Inmediato', ip: 'Gestor'}
+            {correo: 'donaldomorillo8@gmail.com', clave: 'donaldo020202', nombre: 'DONALDO MORILLO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
+            {correo: 'robertomontero128@gmail.com', clave: 'rocio1234', nombre: 'ROBERT MONTERO', plan: 'Admin', diasRestantes: 9999, rango: 'ADMIN 1', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
+            {correo: 'monteroroberto124@gmail.com', clave: 'rocio5020', nombre: 'ADMINISTRADOR MAESTRO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Inmediato', ip: 'Gestor', logoPersonal: ''}
         ];
-       
+         
         let prestamos = JSON.parse(localStorage.getItem('RYM_DATA_V2')) || [];
         let sesion = JSON.parse(localStorage.getItem('RYM_SESSION_SYSTEM')) || null;
 
         function aplicarEstilos() {
+            // Si el usuario en sesión tiene un logo propio asignado por admin, priorizar ese logo
+            let actualLogo = (sesion && sesion.logoPersonal) ? sesion.logoPersonal : config.logo;
+            let actualNombre = (sesion && sesion.nombre) ? sesion.nombre : config.nombre;
+
             const logos = [document.getElementById('logo-c-login'), document.getElementById('logo-ticket')];
             logos.forEach(el => {
                 if(!el) return;
-                if(config.logo) {
-                    el.style.backgroundImage = `url('${config.logo}')`;
+                if(actualLogo) {
+                    el.style.backgroundImage = `url('${actualLogo}')`;
                     el.innerText = '';
                 } else {
-                    el.innerText = config.nombre;
+                    el.style.backgroundImage = 'none';
+                    el.innerText = actualNombre.substring(0, 5); // Acortado si es largo
                 }
             });
-            document.getElementById('tit-ticket').innerText = config.nombre;
+            document.getElementById('tit-ticket').innerText = actualNombre;
         }
 
         function abrirConfigLogo() {
@@ -271,6 +293,10 @@
                 document.getElementById('tit-emp').innerText = user.nombre;
                 const btnAdmin = document.getElementById('btn-adm');
                 if(user.rango === 'SUPER-ADMIN' || user.rango === 'ADMIN 1') btnAdmin.style.display = 'block';
+                
+                // Actualizar vistas y estilos basados en el usuario logueado (por si tiene logo propio)
+                aplicarEstilos();
+
                 cambiarV('v-sis');
                 dibujar(false);
                 dibujarAdminPanel();
@@ -288,12 +314,53 @@
             const ahora = new Date().toLocaleString();
             const ipSimulada = "192.168." + Math.floor(Math.random() * 254 + 1) + "." + Math.floor(Math.random() * 254 + 1);
             usuarios.push({
-                correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: 'Ninguno', diasRestantes: 0, rango: 'USUARIO', panel: true, fechaRegistro: ahora, ip: ipSimulada
+                correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: 'Ninguno', diasRestantes: 0, rango: 'USUARIO', panel: true, fechaRegistro: ahora, ip: ipSimulada, logoPersonal: ''
             });
             localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
             alert("Usuario registrado. Selecciona tu plan y paga con PayPal para activar tu cuenta.");
             cambiarV('v-login');
             abrirM('m-pago');
+        }
+
+        // NUEVA FUNCIÓN: Ejecuta la creación desde el Panel de Control
+        function crearCuentaAdmin() {
+            const nom = document.getElementById('adm-new-nom').value.trim();
+            const cor = document.getElementById('adm-new-cor').value.trim();
+            const cla = document.getElementById('adm-new-cla').value;
+            const rango = document.getElementById('adm-new-rango').value.trim() || 'USUARIO';
+            const dias = parseInt(document.getElementById('adm-new-dias').value) || 0;
+            const logo = document.getElementById('adm-new-logo').value.trim();
+
+            if(!nom || !cor || !cla) return alert("Nombre, Correo y Contraseña son obligatorios.");
+
+            const existe = usuarios.find(u => u.correo === cor);
+            if(existe) return alert("Esta cuenta ya existe en el sistema.");
+
+            const ahora = new Date().toLocaleString();
+            usuarios.push({
+                correo: cor,
+                clave: cla,
+                nombre: nom.toUpperCase(),
+                plan: dias > 300 ? 'Anual' : (dias > 15 ? 'Mensual' : 'Personalizado'),
+                diasRestantes: dias,
+                rango: rango.toUpperCase(),
+                panel: true,
+                fechaRegistro: ahora,
+                ip: 'Creado por Admin',
+                logoPersonal: logo
+            });
+
+            localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
+            alert("Cuenta de " + nom + " creada exitosamente con rango: " + rango);
+            
+            // Limpiar campos del formulario admin
+            document.getElementById('adm-new-nom').value = '';
+            document.getElementById('adm-new-cor').value = '';
+            document.getElementById('adm-new-cla').value = '';
+            document.getElementById('adm-new-rango').value = '';
+            document.getElementById('adm-new-logo').value = '';
+
+            dibujarAdminPanel();
         }
 
         function initPayPalButton() {
@@ -346,9 +413,14 @@
             bodyAdmin.innerHTML = '';
             usuarios.forEach((u, index) => {
                 const esMaestro = u.correo === 'monteroroberto124@gmail.com';
+                // Renderizar preview de logo si posee uno propio
+                const imgHTML = u.logoPersonal ? `<img src="${u.logoPersonal}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : '<span style="color:gray; font-size:11px;">Por defecto</span>';
+                
                 bodyAdmin.innerHTML += `<tr>
+                    <td>${imgHTML}</td>
                     <td><b>${u.correo}</b></td>
                     <td>${u.nombre}</td>
+                    <td><span style="background:#ddd; padding:3px 7px; border-radius:5px; font-size:12px; font-weight:bold;">${u.rango || 'USUARIO'}</span></td>
                     <td>${u.fechaRegistro || 'No registrada'}</td>
                     <td><i>${u.ip || 'Desconocida'}</i></td>
                     <td><span style="font-weight:bold; color:var(--oro);">${u.plan || 'Ninguno'}</span></td>
