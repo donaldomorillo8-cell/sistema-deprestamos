@@ -332,7 +332,7 @@
                     const adminsPorDefecto = [
                         {correo: 'donaldomorillo8@gmail.com', clave: 'donaldo020202', nombre: 'DONALDO MORILLO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
                         {correo: 'robertomontero128@gmail.com', clave: 'rocio1234', nombre: 'ROBERT MONTERO', plan: 'Admin', diasRestantes: 9999, rango: 'ADMIN 1', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
-                        {correo: 'monteroroberto124@gmail.com', clave: 'rocio5020', nombre: 'ADMINISTRADOR MAESTRO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Inmediato', ip: 'Gestor', logoPersonal: ''}
+                    
                     ];
                     for(let u of adminsPorDefecto) {
                         await setDoc(doc(db, "usuarios", u.correo), u);
