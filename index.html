@@ -257,12 +257,51 @@
         </div>
     </div>
 
+    <script type="text/javascript">
+        // Inicialización pública e inmediata de tu cuenta en EmailJS
+        emailjs.init("losukir"); 
+
+        // Variables puentes compartidas globalmente
+        window.codigoGeneradoLocal = null;
+        window.usuarioEnRecuperacion = null;
+        window.listaUsuariosGlobal = [];
+
+        function enviarCodigoVerificacion() {
+            const correoDestino = document.getElementById('rec-cor').value.trim().toLowerCase();
+            if(!correoDestino) return alert("Por favor, introduce tu correo registrado.");
+
+            // Buscar en el búfer global de usuarios
+            const usuarioEncontrado = window.listaUsuariosGlobal.find(u => u.correo.toLowerCase() === correoDestino);
+            if(!usuarioEncontrado) return alert("Este correo electrónico no se encuentra registrado en el sistema.");
+
+            window.codigoGeneradoLocal = Math.floor(100000 + Math.random() * 900000).toString();
+            window.usuarioEnRecuperacion = usuarioEncontrado.correo;
+
+            const parametrosEmail = {
+                nombre: usuarioEncontrado.nombre,
+                to_email: usuarioEncontrado.correo,
+                codigo: window.codigoGeneradoLocal
+            };
+
+            alert("Generando código... Por favor espera un momento.");
+
+            // Service ID nativo: service_yk0dm67 | Template ID: losukir
+            emailjs.send("service_yk0dm67", "losukir", parametrosEmail)
+                .then(function() {
+                    alert("¡Código de seguridad enviado exitosamente a tu correo!");
+                    document.getElementById('rec-paso1').style.display = 'none';
+                    document.getElementById('rec-paso2').style.display = 'block';
+                }, function(error) {
+                    console.error("Fallo el envío por EmailJS: ", error);
+                    alert("Hubo un error al despachar el correo. Verifica las cuotas o la plantilla en EmailJS.");
+                });
+        }
+        window.enviarCodigoVerificacion = enviarCodigoVerificacion;
+    </script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // Inicialización pública de tu cuenta en EmailJS
-        emailjs.init("losukir"); 
 
         const firebaseConfig = {
             apiKey: "AIzaSyB1GiU9A9pbJ4Pa-tzpirZxqi5-wvSpoi8",
@@ -277,12 +316,8 @@
         const db = getFirestore(app);
 
         let config = { nombre: 'R&M', logo: '' };
-        let usuarios = [];
         let prestamos = [];
         let sesion = JSON.parse(localStorage.getItem('RYM_SESSION_SYSTEM')) || null;
-
-        let codigoGeneradoLocal = null;
-        let usuarioEnRecuperacion = null;
 
         window.onload = async function() {
             try {
@@ -290,10 +325,10 @@
                 if(configDoc.exists()) config = configDoc.data();
 
                 const usersSnapshot = await getDocs(collection(db, "usuarios"));
-                usuarios = [];
-                usersSnapshot.forEach(doc => { usuarios.push(doc.data()); });
+                window.listaUsuariosGlobal = [];
+                usersSnapshot.forEach(doc => { window.listaUsuariosGlobal.push(doc.data()); });
 
-                if(usuarios.length === 0) {
+                if(window.listaUsuariosGlobal.length === 0) {
                     const adminsPorDefecto = [
                         {correo: 'donaldomorillo8@gmail.com', clave: 'donaldo020202', nombre: 'DONALDO MORILLO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
                         {correo: 'robertomontero128@gmail.com', clave: 'rocio1234', nombre: 'ROBERT MONTERO', plan: 'Admin', diasRestantes: 9999, rango: 'ADMIN 1', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
@@ -301,7 +336,7 @@
                     ];
                     for(let u of adminsPorDefecto) {
                         await setDoc(doc(db, "usuarios", u.correo), u);
-                        usuarios.push(u);
+                        window.listaUsuariosGlobal.push(u);
                     }
                 }
 
@@ -313,7 +348,7 @@
                 initPayPalButton();
 
                 if(sesion) {
-                    const userRefrescado = usuarios.find(u => u.correo === sesion.correo);
+                    const userRefrescado = window.listaUsuariosGlobal.find(u => u.correo === sesion.correo);
                     if(userRefrescado) {
                         sesion = userRefrescado;
                         localStorage.setItem('RYM_SESSION_SYSTEM', JSON.stringify(sesion));
@@ -332,55 +367,23 @@
                     dibujar(false);
                     dibujarAdminPanel();
                 }
-            } catch (error) { console.error("Error: ", error); }
+            } catch (error) { console.error("Error inicializando: ", error); }
         };
-
-        // --- LÓGICA DE RECUPERACIÓN CORREGIDA ---
-        async function enviarCodigoVerificacion() {
-            const correoDestino = document.getElementById('rec-cor').value.trim().toLowerCase();
-            if(!correoDestino) return alert("Por favor, introduce tu correo registrado.");
-
-            const usuarioEncontrado = usuarios.find(u => u.correo.toLowerCase() === correoDestino);
-            if(!usuarioEncontrado) return alert("Este correo electrónico no se encuentra registrado en el sistema.");
-
-            codigoGeneradoLocal = Math.floor(100000 + Math.random() * 900000).toString();
-            usuarioEnRecuperacion = usuarioEncontrado.correo;
-
-            // Parámetros limpios estructurados exactamente como se mapean en EmailJS
-            const parametrosEmail = {
-                nombre: usuarioEncontrado.nombre,
-                to_email: usuarioEncontrado.correo,
-                codigo: codigoGeneradoLocal
-            };
-
-            alert("Generando código... Por favor espera un momento.");
-
-            // Service ID: service_8kcac63 | Template ID: losukir
-            emailjs.send("service_8kcac63", "losukir", parametrosEmail)
-                .then(() => {
-                    alert("¡Código de seguridad enviado exitosamente a tu correo!");
-                    document.getElementById('rec-paso1').style.display = 'none';
-                    document.getElementById('rec-paso2').style.display = 'block';
-                }, (error) => {
-                    console.error("Fallo el envío por EmailJS: ", error);
-                    alert("Hubo un error al enviar el correo. Revisa tus credenciales de EmailJS.");
-                });
-        }
 
         async function cambiarContrasenaFinal() {
             const codigoIngresado = document.getElementById('rec-cod-input').value.trim();
             const nuevaClave = document.getElementById('rec-nueva-cla').value.trim();
 
             if(!codigoIngresado || !nuevaClave) return alert("Completa todos los campos solicitados.");
-            if(codigoIngresado !== codigoGeneradoLocal) return alert("El código introducido no es correcto.");
+            if(codigoIngresado !== window.codigoGeneradoLocal) return alert("El código introducido no es correcto.");
 
             try {
-                await updateDoc(doc(db, "usuarios", usuarioEnRecuperacion), {
+                await updateDoc(doc(db, "usuarios", window.usuarioEnRecuperacion), {
                     clave: nuevaClave
                 });
 
-                let idx = usuarios.findIndex(u => u.correo === usuarioEnRecuperacion);
-                if(idx !== -1) usuarios[idx].clave = nuevaClave;
+                let idx = window.listaUsuariosGlobal.findIndex(u => u.correo === window.usuarioEnRecuperacion);
+                if(idx !== -1) window.listaUsuariosGlobal[idx].clave = nuevaClave;
 
                 alert("¡Contraseña restablecida exitosamente! Ya puedes iniciar sesión con tu nueva clave.");
                 
@@ -390,8 +393,8 @@
                 document.getElementById('rec-paso1').style.display = 'block';
                 document.getElementById('rec-paso2').style.display = 'none';
                 
-                codigoGeneradoLocal = null;
-                usuarioEnRecuperacion = null;
+                window.codigoGeneradoLocal = null;
+                window.usuarioEnRecuperacion = null;
                 
                 cambiarV('v-login');
             } catch (error) {
@@ -458,7 +461,7 @@
         function entrar() {
             const cor = document.getElementById('l-cor').value.trim();
             const cla = document.getElementById('l-cla').value;
-            const user = usuarios.find(u => u.correo === cor && u.clave === cla);
+            const user = window.listaUsuariosGlobal.find(u => u.correo === cor && u.clave === cla);
             const aviso = document.getElementById('msg-vencido');
             aviso.style.display = 'none';
             if(user) {
@@ -482,7 +485,7 @@
             const cor = document.getElementById('r-cor').value.trim();
             const cla = document.getElementById('r-cla').value;
             if(!nom || !cor || !cla) return alert("Por favor complete todos los campos.");
-            const existe = usuarios.find(u => u.correo === cor);
+            const existe = window.listaUsuariosGlobal.find(u => u.correo === cor);
             if(existe) return alert("Este usuario/correo ya está registrado.");
             
             document.getElementById('l-cor').value = cor;
@@ -491,7 +494,7 @@
             
             const nuevoUsuario = { correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: 'Ninguno', diasRestantes: 0, rango: 'USUARIO', panel: true, fechaRegistro: ahora, ip: ipSimulada, logoPersonal: '' };
             await setDoc(doc(db, "usuarios", cor), nuevoUsuario);
-            usuarios.push(nuevoUsuario);
+            window.listaUsuariosGlobal.push(nuevoUsuario);
             alert("Usuario registrado. Selecciona tu plan y paga para activar tu cuenta.");
             cambiarV('v-login');
             abrirM('m-pago');
@@ -506,13 +509,13 @@
             const logo = document.getElementById('adm-new-logo').value.trim();
 
             if(!nom || !cor || !cla) return alert("Nombre, Correo y Contraseña son obligatorios.");
-            const existe = usuarios.find(u => u.correo === cor);
+            const existe = window.listaUsuariosGlobal.find(u => u.correo === cor);
             if(existe) return alert("Esta cuenta ya existe.");
 
             const ahora = new Date().toLocaleString();
             const nuevoAdminUser = { correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: dias > 300 ? 'Anual' : (dias > 15 ? 'Mensual' : 'Personalizado'), diasRestantes: dias, rango: rango.toUpperCase(), panel: true, fechaRegistro: ahora, ip: 'Creado por Admin', logoPersonal: logo };
             await setDoc(doc(db, "usuarios", cor), nuevoAdminUser);
-            usuarios.push(nuevoAdminUser);
+            window.listaUsuariosGlobal.push(nuevoAdminUser);
             alert("Cuenta creada.");
             dibujarAdminPanel();
         }
@@ -539,10 +542,10 @@
                         if(planSeleccionado === 'semanal') { dias = 7; nombrePlan = "Semanal"; }
                         if(planSeleccionado === 'anual') { dias = 365; nombrePlan = "Anual"; }
                         
-                        let uIdx = usuarios.findIndex(u => u.correo === correoInput);
+                        let uIdx = window.listaUsuariosGlobal.findIndex(u => u.correo === correoInput);
                         if(uIdx !== -1) {
-                            usuarios[uIdx].diasRestantes = dias;
-                            usuarios[uIdx].plan = nombrePlan;
+                            window.listaUsuariosGlobal[uIdx].diasRestantes = dias;
+                            window.listaUsuariosGlobal[uIdx].plan = nombrePlan;
                             await updateDoc(doc(db, "usuarios", correoInput), { diasRestantes: dias, plan: nombrePlan });
                             alert("¡Pago Exitoso!");
                             cerrarM('m-pago');
@@ -584,7 +587,7 @@
             const bodyAdmin = document.getElementById('t-admin-users-body');
             if(!bodyAdmin) return;
             bodyAdmin.innerHTML = '';
-            usuarios.forEach((u, index) => {
+            window.listaUsuariosGlobal.forEach((u, index) => {
                 const esMaestro = u.correo === 'monteroroberto124@gmail.com';
                 const imgHTML = u.logoPersonal ? `<img src="${u.logoPersonal}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : '<span style="color:gray; font-size:11px;">Por defecto</span>';
                 bodyAdmin.innerHTML += `<tr>
@@ -608,16 +611,16 @@
         }
 
         async function modificarDiasUser(index, cantidad) {
-            usuarios[index].diasRestantes = Math.max(0, (usuarios[index].diasRestantes || 0) + cantidad);
-            await updateDoc(doc(db, "usuarios", usuarios[index].correo), { diasRestantes: usuarios[index].diasRestantes });
+            window.listaUsuariosGlobal[index].diasRestantes = Math.max(0, (window.listaUsuariosGlobal[index].diasRestantes || 0) + cantidad);
+            await updateDoc(doc(db, "usuarios", window.listaUsuariosGlobal[index].correo), { diasRestantes: window.listaUsuariosGlobal[index].diasRestantes });
             alert(`Suscripción actualizada.`);
             dibujarAdminPanel();
         }
 
         async function eliminarUsuarioSistema(index) {
             if(confirm(`¿Seguro de borrar permanentemente al usuario?`)) {
-                await deleteDoc(doc(db, "usuarios", usuarios[index].correo));
-                usuarios.splice(index, 1);
+                await deleteDoc(doc(db, "usuarios", window.listaUsuariosGlobal[index].correo));
+                window.listaUsuariosGlobal.splice(index, 1);
                 dibujarAdminPanel();
             }
         }
@@ -789,8 +792,7 @@
             dibujar(false);
         }
 
-        // CONTROL DE ACCESIBILIDAD GLOBAL
-        window.enviarCodigoVerificacion = enviarCodigoVerificacion;
+        // CONTROL DE ACCESIBILIDAD GLOBAL DESDE MODULO
         window.cambiarContrasenaFinal = cambiarContrasenaFinal;
         window.abrirConfigLogo = abrirConfigLogo;
         window.guardarConfig = guardarConfig;
