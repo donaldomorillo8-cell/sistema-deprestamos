@@ -24,14 +24,20 @@
         .pencil-icon { position: absolute; bottom: 0; right: 0; background: var(--oro); color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid white; z-index: 10; }
         input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; }
         .btn { background: var(--oro); color: white; padding: 15px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; transition: 0.3s; }
-        .btn-v { background: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
+        
+        /* BOTONES CON ICONOS DE LA TABLA */
+        .btn-cobrar { background: #28a745; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; transition: 0.2s; }
+        .btn-cobrar:hover { background: #218838; }
+        .btn-engranaje { background: #6c757d; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 18px; transition: 0.2s; margin-left: 4px; }
+        .btn-engranaje:hover { background: #5a6268; }
+
         .btn-adm { background: var(--negro); color: var(--oro); border: 2px solid var(--oro); padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
         th { background: var(--negro); color: white; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
         
-        /* DISEÑO DE RECIBO MAS GRANDE */
+        /* DISEÑO DE RECIBO */
         .ticket { background: white; padding: 35px; width: 420px; text-align: center; border: 2px dashed #222; font-family: 'Courier New', monospace; font-size: 20px; font-weight: bold; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .ticket h3 { font-size: 30px; margin: 15px 0; font-weight: 900; letter-spacing: 1px; }
         .ticket hr { border: 1px dashed #000; margin: 15px 0; }
@@ -233,7 +239,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Configuración entregada por el usuario
         const firebaseConfig = {
             apiKey: "AIzaSyB1GiU9A9pbJ4Pa-tzpirZxqi5-wvSpoi8",
             authDomain: "sistema-prestamos-ffd9c.firebaseapp.com",
@@ -246,27 +251,19 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Variables de Estado
         let config = { nombre: 'R&M', logo: '' };
         let usuarios = [];
         let prestamos = [];
         let sesion = JSON.parse(localStorage.getItem('RYM_SESSION_SYSTEM')) || null;
 
-        // --- CARGA INICIAL DESDE CLOUD FIRESTORE ---
         window.onload = async function() {
             try {
-                // 1. Cargar Configuración Global de la Empresa
                 const configDoc = await getDoc(doc(db, "configuracion", "empresa"));
-                if(configDoc.exists()) {
-                    config = configDoc.data();
-                }
+                if(configDoc.exists()) config = configDoc.data();
 
-                // 2. Cargar Base de Datos de Usuarios del Servidor
                 const usersSnapshot = await getDocs(collection(db, "usuarios"));
                 usuarios = [];
-                usersSnapshot.forEach(doc => {
-                    usuarios.push(doc.data());
-                });
+                usersSnapshot.forEach(doc => { usuarios.push(doc.data()); });
 
                 if(usuarios.length === 0) {
                     const adminsPorDefecto = [
@@ -280,12 +277,9 @@
                     }
                 }
 
-                // 3. Cargar Base de Datos de Préstamos Globales
                 const prestamosSnapshot = await getDocs(collection(db, "prestamos"));
                 prestamos = [];
-                prestamosSnapshot.forEach(doc => {
-                    prestamos.push({ firestoreId: doc.id, ...doc.data() });
-                });
+                prestamosSnapshot.forEach(doc => { prestamos.push({ firestoreId: doc.id, ...doc.data() }); });
 
                 aplicarEstilos();
                 initPayPalButton();
@@ -310,18 +304,13 @@
                     dibujar(false);
                     dibujarAdminPanel();
                 }
-            } catch (error) {
-                console.error("Error al inicializar la app con Firebase: ", error);
-            }
+            } catch (error) { console.error("Error: ", error); }
         };
 
         async function verificarYCalcularMoras() {
-            let modificado = false;
             const ahora = Date.now();
-            
             for (let p of prestamos) {
                 if(p.pag >= p.mon) continue;
-
                 const ultimaFechaOperacion = p.fechaUltimoPago || p.id;
                 const diferenciaTiempo = ahora - ultimaFechaOperacion;
                 const diasTranscurridos = Math.floor(diferenciaTiempo / (1000 * 60 * 60 * 24));
@@ -349,17 +338,11 @@
         function aplicarEstilos() {
             let actualLogo = (sesion && sesion.logoPersonal) ? sesion.logoPersonal : config.logo;
             let actualNombre = (sesion && sesion.nombre) ? sesion.nombre : config.nombre;
-
             const logos = [document.getElementById('logo-c-login'), document.getElementById('logo-ticket')];
             logos.forEach(el => {
                 if(!el) return;
-                if(actualLogo) {
-                    el.style.backgroundImage = `url('${actualLogo}')`;
-                    el.innerText = '';
-                } else {
-                    el.style.backgroundImage = 'none';
-                    el.innerText = actualNombre.substring(0, 5);
-                }
+                if(actualLogo) { el.style.backgroundImage = `url('${actualLogo}')`; el.innerText = ''; } 
+                else { el.style.backgroundImage = 'none'; el.innerText = actualNombre.substring(0, 5); }
             });
             document.getElementById('tit-ticket').innerText = actualNombre;
         }
@@ -386,17 +369,13 @@
             const aviso = document.getElementById('msg-vencido');
             aviso.style.display = 'none';
             if(user) {
-                if(user.diasRestantes <= 0) {
-                    aviso.style.display = 'block';
-                    return;
-                }
+                if(user.diasRestantes <= 0) { aviso.style.display = 'block'; return; }
                 if(user.rango !== 'SUPER-ADMIN' && user.panel === false) return alert("ACCESO DENEGADO.");
                 sesion = user;
                 localStorage.setItem('RYM_SESSION_SYSTEM', JSON.stringify(user));
                 document.getElementById('tit-emp').innerText = user.nombre;
                 const btnAdmin = document.getElementById('btn-adm');
                 if(user.rango === 'SUPER-ADMIN' || user.rango === 'ADMIN 1') btnAdmin.style.display = 'block';
-                
                 aplicarEstilos();
                 cambiarV('v-sis');
                 verificarYCalcularMoras();
@@ -410,7 +389,6 @@
             const cor = document.getElementById('r-cor').value.trim();
             const cla = document.getElementById('r-cla').value;
             if(!nom || !cor || !cla) return alert("Por favor complete todos los campos.");
-            
             const existe = usuarios.find(u => u.correo === cor);
             if(existe) return alert("Este usuario/correo ya está registrado.");
             
@@ -418,14 +396,10 @@
             const ahora = new Date().toLocaleString();
             const ipSimulada = "192.168." + Math.floor(Math.random() * 254 + 1) + "." + Math.floor(Math.random() * 254 + 1);
             
-            const nuevoUsuario = {
-                correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: 'Ninguno', diasRestantes: 0, rango: 'USUARIO', panel: true, fechaRegistro: ahora, ip: ipSimulada, logoPersonal: ''
-            };
-
+            const nuevoUsuario = { correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: 'Ninguno', diasRestantes: 0, rango: 'USUARIO', panel: true, fechaRegistro: ahora, ip: ipSimulada, logoPersonal: '' };
             await setDoc(doc(db, "usuarios", cor), nuevoUsuario);
             usuarios.push(nuevoUsuario);
-
-            alert("Usuario registrado. Selecciona tu plan y paga con PayPal para activar tu cuenta.");
+            alert("Usuario registrado. Selecciona tu plan y paga para activar tu cuenta.");
             cambiarV('v-login');
             abrirM('m-pago');
         }
@@ -439,26 +413,14 @@
             const logo = document.getElementById('adm-new-logo').value.trim();
 
             if(!nom || !cor || !cla) return alert("Nombre, Correo y Contraseña son obligatorios.");
-
             const existe = usuarios.find(u => u.correo === cor);
-            if(existe) return alert("Esta cuenta ya existe en el sistema.");
+            if(existe) return alert("Esta cuenta ya existe.");
 
             const ahora = new Date().toLocaleString();
-            const nuevoAdminUser = {
-                correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: dias > 300 ? 'Anual' : (dias > 15 ? 'Mensual' : 'Personalizado'), diasRestantes: dias, rango: rango.toUpperCase(), panel: true, fechaRegistro: electromagnetic = ahora, ip: 'Creado por Admin', logoPersonal: logo
-            };
-
+            const nuevoAdminUser = { correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: dias > 300 ? 'Anual' : (dias > 15 ? 'Mensual' : 'Personalizado'), diasRestantes: dias, rango: rango.toUpperCase(), panel: true, fechaRegistro: ahora, ip: 'Creado por Admin', logoPersonal: logo };
             await setDoc(doc(db, "usuarios", cor), nuevoAdminUser);
             usuarios.push(nuevoAdminUser);
-
-            alert("Cuenta de " + nom + " creada exitosamente con rango: " + rango);
-            
-            document.getElementById('adm-new-nom').value = '';
-            document.getElementById('adm-new-cor').value = '';
-            document.getElementById('adm-new-cla').value = '';
-            document.getElementById('adm-new-rango').value = '';
-            document.getElementById('adm-new-logo').value = '';
-
+            alert("Cuenta creada.");
             dibujarAdminPanel();
         }
 
@@ -472,17 +434,13 @@
                     if(planSeleccionado === 'semanal') costo = "2.00";
                     if(planSeleccionado === 'anual') costo = "50.00";
                     return actions.order.create({
-                        purchase_units: [{
-                            description: "Suscripción Sistema R&M Finanzas",
-                            amount: { currency_code: "USD", value: costo },
-                            payee: { email_address: "morilloysaia6@gmail.com" }
-                        }]
+                        purchase_units: [{ description: "Suscripción Sistema R&M Finanzas", amount: { currency_code: "USD", value: costo } }]
                     });
                 },
                 onApprove: function(data, actions) {
                     return actions.order.capture().then(async function(details) {
                         const correoInput = document.getElementById('l-cor').value.trim();
-                        if(!correoInput) { alert("Pago recibido sin vinculación de cuenta. ID Transacción: " + details.id); return; }
+                        if(!correoInput) return alert("Inicia sesión primero para vincular tu pago.");
                         const planSeleccionado = document.getElementById('pago-plan').value;
                         let dias = 30; let nombrePlan = "Mensual";
                         if(planSeleccionado === 'semanal') { dias = 7; nombrePlan = "Semanal"; }
@@ -492,16 +450,11 @@
                         if(uIdx !== -1) {
                             usuarios[uIdx].diasRestantes = dias;
                             usuarios[uIdx].plan = nombrePlan;
-                            
-                            await updateDoc(doc(db, "usuarios", correoInput), {
-                                diasRestantes: dias,
-                                plan: nombrePlan
-                            });
-
-                            alert("¡Pago Exitoso! Cuenta activada por " + dias + " días.");
+                            await updateDoc(doc(db, "usuarios", correoInput), { diasRestantes: dias, plan: nombrePlan });
+                            alert("¡Pago Exitoso!");
                             cerrarM('m-pago');
                             location.reload();
-                        } else { alert("Error al asignar los parámetros de compra."); }
+                        }
                     });
                 }
             }).render('#paypal-button-container');
@@ -519,7 +472,6 @@
             usuarios.forEach((u, index) => {
                 const esMaestro = u.correo === 'monteroroberto124@gmail.com';
                 const imgHTML = u.logoPersonal ? `<img src="${u.logoPersonal}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : '<span style="color:gray; font-size:11px;">Por defecto</span>';
-                
                 bodyAdmin.innerHTML += `<tr>
                     <td>${imgHTML}</td>
                     <td><b>${u.correo}</b></td>
@@ -542,34 +494,21 @@
 
         async function modificarDiasUser(index, cantidad) {
             usuarios[index].diasRestantes = Math.max(0, (usuarios[index].diasRestantes || 0) + cantidad);
-            await updateDoc(doc(db, "usuarios", usuarios[index].correo), {
-                diasRestantes: usuarios[index].diasRestantes
-            });
-            alert(`Suscripción actualizada. Nuevos días: ${usuarios[index].diasRestantes}`);
+            await updateDoc(doc(db, "usuarios", usuarios[index].correo), { diasRestantes: usuarios[index].diasRestantes });
+            alert(`Suscripción actualizada.`);
             dibujarAdminPanel();
         }
 
         async function eliminarUsuarioSistema(index) {
-            const correoEliminar = usuarios[index].correo;
-            if(confirm(`¿Seguro de borrar permanentemente al usuario: ${usuarios[index].nombre}?`)) {
-                await deleteDoc(doc(db, "usuarios", correoEliminar));
+            if(confirm(`¿Seguro de borrar permanentemente al usuario?`)) {
+                await deleteDoc(doc(db, "usuarios", usuarios[index].correo));
                 usuarios.splice(index, 1);
-                alert("Cuenta eliminada del servidor.");
                 dibujarAdminPanel();
             }
         }
 
-        function salir() {
-            if(confirm("¿Seguro que desea salir?")) {
-                localStorage.removeItem('RYM_SESSION_SYSTEM');
-                location.reload();
-            }
-        }
-
-        function cambiarV(id) {
-            document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
-            document.getElementById(id).classList.add('activa');
-        }
+        function salir() { if(confirm("¿Seguro que desea salir?")) { localStorage.removeItem('RYM_SESSION_SYSTEM'); location.reload(); } }
+        function cambiarV(id) { document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa')); document.getElementById(id).classList.add('activa'); }
         function abrirM(id) { document.getElementById(id).style.display = 'flex'; }
         function cerrarM(id) { document.getElementById(id).style.display = 'none'; }
 
@@ -578,7 +517,7 @@
             const ced = document.getElementById('n-ced').value.trim();
             const capitalBase = parseFloat(document.getElementById('n-mon').value);
             const porcentajeInteres = parseFloat(document.getElementById('n-int').value) || 0;
-            const pla = document.getElementById('n-pla').value;
+            const pPlan = document.getElementById('n-pla').value;
             const cuo = parseInt(document.getElementById('n-cuo').value);
             
             if(cli && capitalBase && cuo) {
@@ -589,25 +528,11 @@
                 const montoTotalCobrar = capitalBase + montoInteres;
 
                 const nuevoPrestamo = {
-                    id: Date.now(), 
-                    creador: sesion.correo, 
-                    cli, 
-                    ced, 
-                    capitalOriginal: capitalBase, 
-                    interesPactado: montoInteres,  
-                    mon: montoTotalCobrar,         
-                    pag: 0, 
-                    pla, 
-                    cuo, 
-                    numPagos: 0, 
-                    enSicla: false,
-                    moraAcumulada: 0,
-                    fechaUltimoPago: null          
+                    id: Date.now(), creador: sesion.correo, cli, ced, capitalOriginal: capitalBase, interesPactado: montoInteres, mon: montoTotalCobrar, pag: 0, pla: pPlan, cuo, numPagos: 0, enSicla: false, moraAcumulada: 0, fechaUltimoPago: null          
                 };
                 
                 const docRef = await addDoc(collection(db, "prestamos"), nuevoPrestamo);
                 nuevoPrestamo.firestoreId = docRef.id;
-                
                 prestamos.push(nuevoPrestamo);
                 cerrarM('m-nue');
                 dibujar(false);
@@ -618,8 +543,7 @@
             const body = document.getElementById('t-body');
             const filtro = document.getElementById('busqueda').value.toLowerCase();
             body.innerHTML = '';
-            let totalCalle = 0;
-            let totalGananciasEstimadas = 0;
+            let totalCalle = 0; let totalGananciasEstimadas = 0;
 
             prestamos.forEach((p, index) => {
                 if(sesion && p.creador === sesion.correo) {
@@ -628,13 +552,12 @@
                         totalCalle += resta;
                         
                         const gananciaPrestamo = (p.interesPactado || 0) + (p.moraAcumulada || 0);
-                        if (resta > 0) {
-                            totalGananciasEstimadas += gananciaPrestamo * (resta / p.mon); 
-                        }
+                        if (resta > 0) totalGananciasEstimadas += gananciaPrestamo * (resta / p.mon); 
 
                         const fraseSicla = p.enSicla ? '<span class="badge-sicla">EN SICLA</span>' : '';
                         const fraseMora = p.moraAcumulada > 0 ? `<span class="badge-mora">MORA ACUM. RD$ ${p.moraAcumulada}</span>` : '';
 
+                        // CAMBIO CLAVE AQUÍ: LÓGICA DE ICONO DE DINERO Y ENGRANAJE DE MENÚ
                         body.innerHTML += `<tr>
                             <td><b>${p.cli.toUpperCase()}</b> ${fraseSicla} ${fraseMora}<br><small style="color:gray;">Céd: ${p.ced || 'N/A'}</small></td>
                             <td>${p.numPagos} / ${p.cuo}</td>
@@ -643,14 +566,10 @@
                             <td style="color:${resta <= 0 ? 'green' : 'red'}; font-weight:bold;">RD$ ${resta.toFixed(2)}</td>
                             <td>
                                 ${resta <= 0 ? `
-                                    <b style="color:green; font-size:12px; display:block; margin-bottom:4px;">PAGADO</b>
-                                    <button style="background:#007bfs; color:white; border:none; padding:5px 8px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;" onclick="reengancheCliente(${index})">Reenganche</button>
-                                    <button style="background:#dc3545; color:white; border:none; padding:5px 8px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px; margin-left:2px;" onclick="eliminarPrestamo(${index})">X</button>
+                                    <button class="btn-engranaje" onclick="abrirMenuEngranaje(${index}, true)">⚙️</button>
                                 ` : `
-                                    <button class="btn-v" onclick="procesarPagoRapido(${index})">Cobrar Cuota</button>
-                                    <button style="background:darkgreen; color:white; border:none; padding:8px 10px; border-radius:5px; cursor:pointer; font-weight:bold; margin-left:2px;" onclick="saldarPrestamoCompleto(${index})">Saldar</button>
-                                    <button style="background:gray; color:white; border:none; padding:8px; margin-left:3px; border-radius:5px; cursor:pointer;" onclick="alternarSiclaClient(${index})">Sicla</button>
-                                    <button style="background:#dc3545; color:white; border:none; padding:8px 10px; border-radius:5px; cursor:pointer; font-weight:bold; margin-left:2px;" onclick="eliminarPrestamo(${index})">X</button>
+                                    <button class="btn-cobrar" onclick="procesarPagoRapido(${index})" title="Cobrar Cuota">💵</button>
+                                    <button class="btn-engranaje" onclick="abrirMenuEngranaje(${index}, false)" title="Opciones">⚙️</button>
                                 `}
                             </td>
                         </tr>`;
@@ -661,6 +580,29 @@
             document.getElementById('total-calle').innerText = totalCalle.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('total-ganancias').innerText = totalGananciasEstimadas.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
+
+        // --- MENÚ DESPLEGABLE INTERACTIVO NATIVO DEL ENGRANAJE ---
+        window.abrirMenuEngranaje = function(index, estaPagado) {
+            const p = prestamos[index];
+            let mensajeMenu = `GESTIÓN DE CLIENTE: ${p.cli.toUpperCase()}\n\n`;
+            
+            if (estaPagado) {
+                mensajeMenu += `El préstamo está PAGADO.\nEscribe el número de la opción:\n1. Reenganche de Cliente\n2. Eliminar Préstamo\n\nCancelar (Presiona cualquier otra tecla o Cancelar)`;
+            } else {
+                mensajeMenu += `Monto Pendiente: RD$ ${(p.mon - p.pag).toFixed(2)}\n\nEscribe el número de la opción:\n1. Saldar Préstamo Completo\n2. Alternar Estado SICLA (Reportar/Limpiar)\n3. Eliminar Préstamo\n\nCancelar (Presiona cualquier otra tecla o Cancelar)`;
+            }
+
+            const seleccion = prompt(mensajeMenu);
+
+            if (estaPagado) {
+                if (seleccion === "1") reengancheCliente(index);
+                else if (seleccion === "2") eliminarPrestamo(index);
+            } else {
+                if (seleccion === "1") saldarPrestamoCompleto(index);
+                else if (seleccion === "2") alternarSiclaClient(index);
+                else if (seleccion === "3") eliminarPrestamo(index);
+            }
+        };
 
         async function procesarPagoRapido(index) {
             const p = prestamos[index];
@@ -680,7 +622,6 @@
                 });
             }
 
-            // Configurar Recibo de Pago Normal
             document.getElementById('rf').innerText = new Date().toLocaleString();
             document.getElementById('rc').innerText = p.cli.toUpperCase();
             document.getElementById('r-ced').innerText = p.ced || 'N/A';
@@ -688,8 +629,6 @@
             document.getElementById('rp').innerText = p.pla.toUpperCase();
             document.getElementById('rm').innerText = valorCuotaFija.toFixed(2);
             document.getElementById('rr').innerText = (p.mon - p.pag).toFixed(2);
-            
-            // Ocultar recomendación porque es pago de cuota regular
             document.getElementById('wrapper-rq').style.display = 'none';
             
             abrirM('m-recibo');
@@ -702,7 +641,7 @@
             
             if(confirm(`¿Seguro que desea SALDAR el préstamo completo de ${p.cli.toUpperCase()} por un valor de RD$ ${restaPendiente.toFixed(2)}?`)) {
                 const pagoRealizado = restaPendiente;
-                p.pag = p.mon; // Se marca como completado
+                p.pag = p.mon;
                 p.numPagos = p.cuo;
                 p.fechaUltimoPago = Date.now();
 
@@ -714,7 +653,6 @@
                     });
                 }
 
-                // Configurar Recibo con la fila de Sugerencia activa
                 document.getElementById('rf').innerText = new Date().toLocaleString();
                 document.getElementById('rc').innerText = p.cli.toUpperCase();
                 document.getElementById('r-ced').innerText = p.ced || 'N/A';
@@ -723,7 +661,7 @@
                 document.getElementById('rm').innerText = pagoRealizado.toFixed(2);
                 document.getElementById('rr').innerText = "0.00";
                 
-                // Mostrar recomendación (Sugerencia de cuota original)
+                // Muestra la recomendación de cuota original solicitada al cobrar/saldar
                 const sugerenciaCuotaOriginal = p.mon / p.cuo;
                 document.getElementById('rq').innerText = sugerenciaCuotaOriginal.toFixed(2);
                 document.getElementById('wrapper-rq').style.display = 'block';
@@ -735,24 +673,20 @@
 
         function reengancheCliente(index) {
             const p = prestamos[index];
-            // Cargar los datos del cliente directo en el modal de nuevo préstamo para agilizar
             document.getElementById('n-cli').value = p.cli;
             document.getElementById('n-ced').value = p.ced || '';
             document.getElementById('n-mon').value = p.capitalOriginal;
             document.getElementById('n-pla').value = p.pla;
             document.getElementById('n-cuo').value = p.cuo;
-            
             abrirM('m-nue');
         }
 
         async function eliminarPrestamo(index) {
             const p = prestamos[index];
             if(confirm(`¿Está seguro de eliminar permanentemente el préstamo de ${p.cli.toUpperCase()} del sistema?`)) {
-                if(p.firestoreId) {
-                    await deleteDoc(doc(db, "prestamos", p.firestoreId));
-                }
+                if(p.firestoreId) await deleteDoc(doc(db, "prestamos", p.firestoreId));
                 prestamos.splice(index, 1);
-                alert("Préstamo eliminado exitosamente.");
+                alert("Préstamo eliminado.");
                 dibujar(false);
             }
         }
@@ -760,18 +694,11 @@
         async function alternarSiclaClient(index) {
             const p = prestamos[index];
             p.enSicla = !p.enSicla;
-            
-            if(p.firestoreId) {
-                await updateDoc(doc(db, "prestamos", p.firestoreId), {
-                    enSicla: p.enSicla
-                });
-            }
-
+            if(p.firestoreId) await updateDoc(doc(db, "prestamos", p.firestoreId), { enSicla: p.enSicla });
             alert(`Estado del cliente actualizado. En Sicla: ${p.enSicla ? 'SÍ' : 'NO'}`);
             dibujar(false);
         }
 
-        // --- MAPEAR FUNCIONES GLOBALES PARA BOTONES HTML ---
         window.abrirConfigLogo = abrirConfigLogo;
         window.guardarConfig = guardarConfig;
         window.entrar = entrar;
