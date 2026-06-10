@@ -229,16 +229,126 @@
         </div>
     </div>
 
-    <script>
-        let config = JSON.parse(localStorage.getItem('RYM_CONFIG')) || { nombre: 'R&M', logo: '' };
-        let usuarios = JSON.parse(localStorage.getItem('RYM_USERS_DATABASE')) || [
-            {correo: 'donaldomorillo8@gmail.com', clave: 'donaldo020202', nombre: 'DONALDO MORILLO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
-            {correo: 'robertomontero128@gmail.com', clave: 'rocio1234', nombre: 'ROBERT MONTERO', plan: 'Admin', diasRestantes: 9999, rango: 'ADMIN 1', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
-            {correo: 'monteroroberto124@gmail.com', clave: 'rocio5020', nombre: 'ADMINISTRADOR MAESTRO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Inmediato', ip: 'Gestor', logoPersonal: ''}
-        ];
-         
-        let prestamos = JSON.parse(localStorage.getItem('RYM_DATA_V2')) || [];
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Configuración entregada por el usuario
+        const firebaseConfig = {
+            apiKey: "AIzaSyB1GiU9A9pbJ4Pa-tzpirZxqi5-wvSpoi8",
+            authDomain: "sistema-prestamos-ffd9c.firebaseapp.com",
+            projectId: "sistema-prestamos-ffd9c",
+            storageBucket: "sistema-prestamos-ffd9c.firebasestorage.app",
+            messagingSenderId: "99336448658",
+            appId: "1:99336448658:web:79134c15c6885cc04c544b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Variables de Estado que ahora se sincronizan con Firebase
+        let config = { nombre: 'R&M', logo: '' };
+        let usuarios = [];
+        let prestamos = [];
         let sesion = JSON.parse(localStorage.getItem('RYM_SESSION_SYSTEM')) || null;
+
+        // --- CARGA INICIAL DESDE CLOUD FIRESTORE ---
+        window.onload = async function() {
+            try {
+                // 1. Cargar Configuración Global de la Empresa
+                const configDoc = await getDoc(doc(db, "configuracion", "empresa"));
+                if(configDoc.exists()) {
+                    config = configDoc.data();
+                }
+
+                // 2. Cargar Base de Datos de Usuarios del Servidor
+                const usersSnapshot = await getDocs(collection(db, "usuarios"));
+                usuarios = [];
+                usersSnapshot.forEach(doc => {
+                    usuarios.push(doc.data());
+                });
+
+                // Si la base de datos en la nube está completamente vacía, inicializar los administradores por defecto
+                if(usuarios.length === 0) {
+                    const adminsPorDefecto = [
+                        {correo: 'donaldomorillo8@gmail.com', clave: 'donaldo020202', nombre: 'DONALDO MORILLO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
+                        {correo: 'robertomontero128@gmail.com', clave: 'rocio1234', nombre: 'ROBERT MONTERO', plan: 'Admin', diasRestantes: 9999, rango: 'ADMIN 1', panel: true, fechaRegistro: 'Previo', ip: '127.0.0.1', logoPersonal: ''},
+                        {correo: 'monteroroberto124@gmail.com', clave: 'rocio5020', nombre: 'ADMINISTRADOR MAESTRO', plan: 'Admin', diasRestantes: 9999, rango: 'SUPER-ADMIN', panel: true, fechaRegistro: 'Inmediato', ip: 'Gestor', logoPersonal: ''}
+                    ];
+                    for(let u of adminsPorDefecto) {
+                        await setDoc(doc(db, "usuarios", u.correo), u);
+                        usuarios.push(u);
+                    }
+                }
+
+                // 3. Cargar Base de Datos de Préstamos Globales
+                const prestamosSnapshot = await getDocs(collection(db, "prestamos"));
+                prestamos = [];
+                prestamosSnapshot.forEach(doc => {
+                    prestamos.push({ firestoreId: doc.id, ...doc.data() });
+                });
+
+                // Ejecución normal de la interfaz
+                aplicarEstilos();
+                initPayPalButton();
+
+                if(sesion) {
+                    // Refrescar los datos de la sesión del usuario actual desde el servidor
+                    const userRefrescado = usuarios.find(u => u.correo === sesion.correo);
+                    if(userRefrescado) {
+                        sesion = userRefrescado;
+                        localStorage.setItem('RYM_SESSION_SYSTEM', JSON.stringify(sesion));
+                    }
+
+                    if(sesion.diasRestantes <= 0) {
+                        localStorage.removeItem('RYM_SESSION_SYSTEM');
+                        document.getElementById('msg-vencido').style.display = 'block';
+                        return;
+                    }
+                    document.getElementById('tit-emp').innerText = sesion.nombre;
+                    const btnAdmin = document.getElementById('btn-adm');
+                    if(sesion.rango === 'SUPER-ADMIN' || sesion.rango === 'ADMIN 1') btnAdmin.style.display = 'block';
+                    cambiarV('v-sis');
+                    await verificarYCalcularMoras();
+                    dibujar(false);
+                    dibujarAdminPanel();
+                }
+            } catch (error) {
+                console.error("Error al inicializar la app con Firebase: ", error);
+            }
+        };
+
+        async function verificarYCalcularMoras() {
+            let modificado = false;
+            const ahora = Date.now();
+            
+            for (let p of prestamos) {
+                if(p.pag >= p.mon) continue;
+
+                const ultimaFechaOperacion = p.fechaUltimoPago || p.id;
+                const diferenciaTiempo = ahora - ultimaFechaOperacion;
+                const diasTranscurridos = Math.floor(diferenciaTiempo / (1000 * 60 * 60 * 24));
+                
+                if (diasTranscurridos >= 5) {
+                    const ciclosMora = Math.floor(diasTranscurridos / 5);
+                    const moraAcumuladaAAgregar = ciclosMora * 35;
+                    
+                    if(!p.moraAcumulada || p.moraAcumulada < moraAcumuladaAAgregar) {
+                        const diferenciaMoraReal = moraAcumuladaAAgregar - (p.moraAcumulada || 0);
+                        p.mon += diferenciaMoraReal;
+                        p.moraAcumulada = moraAcumuladaAAgregar;
+                        
+                        // Sincronizar actualización de mora en Cloud Firestore
+                        if(p.firestoreId) {
+                            await updateDoc(doc(db, "prestamos", p.firestoreId), {
+                                mon: p.mon,
+                                moraAcumulada: p.moraAcumulada
+                            });
+                        }
+                    }
+                }
+            }
+        }
 
         function aplicarEstilos() {
             let actualLogo = (sesion && sesion.logoPersonal) ? sesion.logoPersonal : config.logo;
@@ -264,61 +374,16 @@
             abrirM('m-config-emp');
         }
 
-        function guardarConfig() {
+        async function guardarConfig() {
             config.nombre = document.getElementById('cfg-nombre').value;
             config.logo = document.getElementById('cfg-logo').value;
-            localStorage.setItem('RYM_CONFIG', JSON.stringify(config));
+            
+            // Guardar en la nube
+            await setDoc(doc(db, "configuracion", "empresa"), config);
+            
             aplicarEstilos();
             cerrarM('m-config-emp');
             location.reload();
-        }
-
-        window.onload = function() {
-            aplicarEstilos();
-            initPayPalButton();
-            if(sesion) {
-                if(sesion.diasRestantes <= 0) {
-                    localStorage.removeItem('RYM_SESSION_SYSTEM');
-                    document.getElementById('msg-vencido').style.display = 'block';
-                    return;
-                }
-                document.getElementById('tit-emp').innerText = sesion.nombre;
-                const btnAdmin = document.getElementById('btn-adm');
-                if(sesion.rango === 'SUPER-ADMIN' || sesion.rango === 'ADMIN 1') btnAdmin.style.display = 'block';
-                cambiarV('v-sis');
-                verificarYCalcularMoras();
-                dibujar(false);
-                dibujarAdminPanel();
-            }
-        };
-
-        function verificarYCalcularMoras() {
-            let modificado = false;
-            const ahora = Date.now();
-            
-            prestamos.forEach(p => {
-                if(p.pag >= p.mon) return;
-
-                const ultimaFechaOperacion = p.fechaUltimoPago || p.id;
-                const diferenciaTiempo = ahora - ultimaFechaOperacion;
-                const diasTranscurridos = Math.floor(diferenciaTiempo / (1000 * 60 * 60 * 24));
-                
-                if (diasTranscurridos >= 5) {
-                    const ciclosMora = Math.floor(diasTranscurridos / 5);
-                    const moraAcumuladaAAgregar = ciclosMora * 35;
-                    
-                    if(!p.moraAcumulada || p.moraAcumulada < moraAcumuladaAAgregar) {
-                        const diferenciaMoraReal = moraAcumuladaAAgregar - (p.moraAcumulada || 0);
-                        p.mon += diferenciaMoraReal;
-                        p.moraAcumulada = moraAcumuladaAAgregar;
-                        modificado = true;
-                    }
-                }
-            });
-
-            if(modificado) {
-                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
-            }
         }
 
         function entrar() {
@@ -347,26 +412,33 @@
             } else { alert("Datos incorrectos"); }
         }
 
-        function registrarUsuario() {
+        async function registrarUsuario() {
             const nom = document.getElementById('r-nom').value.trim();
             const cor = document.getElementById('r-cor').value.trim();
             const cla = document.getElementById('r-cla').value;
             if(!nom || !cor || !cla) return alert("Por favor complete todos los campos.");
+            
             const existe = usuarios.find(u => u.correo === cor);
             if(existe) return alert("Este usuario/correo ya está registrado.");
+            
             document.getElementById('l-cor').value = cor;
             const ahora = new Date().toLocaleString();
             const ipSimulada = "192.168." + Math.floor(Math.random() * 254 + 1) + "." + Math.floor(Math.random() * 254 + 1);
-            usuarios.push({
+            
+            const nuevoUsuario = {
                 correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: 'Ninguno', diasRestantes: 0, rango: 'USUARIO', panel: true, fechaRegistro: ahora, ip: ipSimulada, logoPersonal: ''
-            });
-            localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
+            };
+
+            // Guardar usuario nuevo en la colección de Firebase
+            await setDoc(doc(db, "usuarios", cor), nuevoUsuario);
+            usuarios.push(nuevoUsuario);
+
             alert("Usuario registrado. Selecciona tu plan y paga con PayPal para activar tu cuenta.");
             cambiarV('v-login');
             abrirM('m-pago');
         }
 
-        function crearCuentaAdmin() {
+        async function crearCuentaAdmin() {
             const nom = document.getElementById('adm-new-nom').value.trim();
             const cor = document.getElementById('adm-new-cor').value.trim();
             const cla = document.getElementById('adm-new-cla').value;
@@ -380,11 +452,14 @@
             if(existe) return alert("Esta cuenta ya existe en el sistema.");
 
             const ahora = new Date().toLocaleString();
-            usuarios.push({
+            const nuevoAdminUser = {
                 correo: cor, clave: cla, nombre: nom.toUpperCase(), plan: dias > 300 ? 'Anual' : (dias > 15 ? 'Mensual' : 'Personalizado'), diasRestantes: dias, rango: rango.toUpperCase(), panel: true, fechaRegistro: ahora, ip: 'Creado por Admin', logoPersonal: logo
-            });
+            };
 
-            localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
+            // Guardar directamente en Firestore
+            await setDoc(doc(db, "usuarios", cor), nuevoAdminUser);
+            usuarios.push(nuevoAdminUser);
+
             alert("Cuenta de " + nom + " creada exitosamente con rango: " + rango);
             
             document.getElementById('adm-new-nom').value = '';
@@ -414,18 +489,25 @@
                     });
                 },
                 onApprove: function(data, actions) {
-                    return actions.order.capture().then(function(details) {
+                    return actions.order.capture().then(async function(details) {
                         const correoInput = document.getElementById('l-cor').value.trim();
                         if(!correoInput) { alert("Pago recibido sin vinculación de cuenta. ID Transacción: " + details.id); return; }
                         const planSeleccionado = document.getElementById('pago-plan').value;
                         let dias = 30; let nombrePlan = "Mensual";
                         if(planSeleccionado === 'semanal') { dias = 7; nombrePlan = "Semanal"; }
                         if(planSeleccionado === 'anual') { dias = 365; nombrePlan = "Anual"; }
+                        
                         let uIdx = usuarios.findIndex(u => u.correo === correoInput);
                         if(uIdx !== -1) {
                             usuarios[uIdx].diasRestantes = dias;
                             usuarios[uIdx].plan = nombrePlan;
-                            localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
+                            
+                            // Actualizar pago en base de datos Firebase
+                            await updateDoc(doc(db, "usuarios", correoInput), {
+                                diasRestantes: dias,
+                                plan: nombrePlan
+                            });
+
                             alert("¡Pago Exitoso! Cuenta activada por " + dias + " días.");
                             cerrarM('m-pago');
                             location.reload();
@@ -456,7 +538,7 @@
                     <td>${u.fechaRegistro || 'No registrada'}</td>
                     <td><i>${u.ip || 'Desconocida'}</i></td>
                     <td><span style="font-weight:bold; color:var(--oro);">${u.plan || 'Ninguno'}</span></td>
-                    <td><b>${u.diasRestantes} days</b></td>
+                    <td><b>${u.diasRestantes} días</b></td>
                     <td>
                         ${esMaestro ? '<small style="color:gray;">Cuenta Maestra Raíz</small>' : `
                             <button class="btn-add-dias" onclick="modificarDiasUser(${index}, 10)">+10 Días</button>
@@ -468,17 +550,24 @@
             });
         }
 
-        function modificarDiasUser(index, cantidad) {
+        async function modificarDiasUser(index, cantidad) {
             usuarios[index].diasRestantes = Math.max(0, (usuarios[index].diasRestantes || 0) + cantidad);
-            localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
+            
+            // Persistir cambios en Firestore
+            await updateDoc(doc(db, "usuarios", usuarios[index].correo), {
+                diasRestantes: usuarios[index].diasRestantes
+            });
+
             alert(`Suscripción actualizada. Nuevos días: ${usuarios[index].diasRestantes}`);
             dibujarAdminPanel();
         }
 
-        function eliminarUsuarioSistema(index) {
+        async function eliminarUsuarioSistema(index) {
+            const correoEliminar = usuarios[index].correo;
             if(confirm(`¿Seguro de borrar permanentemente al usuario: ${usuarios[index].nombre}?`)) {
+                // Eliminar de Firestore
+                await deleteDoc(doc(db, "usuarios", correoEliminar));
                 usuarios.splice(index, 1);
-                localStorage.setItem('RYM_USERS_DATABASE', JSON.stringify(usuarios));
                 alert("Cuenta eliminada del servidor.");
                 dibujarAdminPanel();
             }
@@ -498,7 +587,7 @@
         function abrirM(id) { document.getElementById(id).style.display = 'flex'; }
         function cerrarM(id) { document.getElementById(id).style.display = 'none'; }
 
-        function guardarP() {
+        async function guardarP() {
             const cli = document.getElementById('n-cli').value.trim();
             const ced = document.getElementById('n-ced').value.trim();
             const capitalBase = parseFloat(document.getElementById('n-mon').value);
@@ -513,7 +602,7 @@
                 const montoInteres = capitalBase * (porcentajeInteres / 100);
                 const montoTotalCobrar = capitalBase + montoInteres;
 
-                prestamos.push({
+                const nuevoPrestamo = {
                     id: Date.now(), 
                     creador: sesion.correo, 
                     cli, 
@@ -528,9 +617,13 @@
                     enSicla: false,
                     moraAcumulada: 0,
                     fechaUltimoPago: null          
-                });
+                };
                 
-                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
+                // Guardar en la nube y capturar el ID generado
+                const docRef = await addDoc(collection(db, "prestamos"), nuevoPrestamo);
+                nuevoPrestamo.firestoreId = docRef.id;
+                
+                prestamos.push(nuevoPrestamo);
                 cerrarM('m-nue');
                 dibujar(false);
             }
@@ -543,7 +636,7 @@
             let totalCalle = 0;
             let totalGananciasEstimadas = 0;
 
-            prestamos.forEach(p => {
+            prestamos.forEach((p, index) => {
                 if(sesion && p.creador === sesion.correo) {
                     if (p.cli.toLowerCase().includes(filtro) || (p.ced && p.ced.toLowerCase().includes(filtro))) {
                         const resta = p.mon - p.pag;
@@ -555,110 +648,93 @@
                         }
 
                         const fraseSicla = p.enSicla ? '<span class="badge-sicla">EN SICLA</span>' : '';
-                        const fraseMora = (p.moraAcumulada && p.moraAcumulada > 0) ? `<span class="badge-mora">MORA: RD$ ${p.moraAcumulada}</span>` : '';
+                        const fraseMora = p.moraAcumulada > 0 ? `<span class="badge-mora">MORA ACUM. RD$ ${p.moraAcumulada}</span>` : '';
 
                         body.innerHTML += `<tr>
-                            <td><b>${p.cli}</b><br><small>${p.ced || ''}</small> ${fraseSicla} ${fraseMora}</td>
-                            <td>${p.numPagos || 0}/${p.cuo}</td>
-                            <td>${p.pla}</td>
-                            <td>${p.mon.toLocaleString()}</td>
-                            <td style="color:${resta === 0 ? 'green' : 'red'}; font-weight:bold;">${resta === 0 ? 'SALDADO' : resta.toLocaleString()}</td>
-                            <td style="display:flex; gap:5px;">
-                                <button class="btn-v" onclick="cobrar(${p.id})">$</button>
-                                <button class="btn-v" style="background:#dc3545;" onclick="menuAcciones(${p.id})">⚙️</button>
+                            <td><b>${p.cli.toUpperCase()}</b> ${fraseSicla} ${fraseMora}<br><small style="color:gray;">Céd: ${p.ced || 'N/A'}</small></td>
+                            <td>${p.numPagos} / ${p.cuo}</td>
+                            <td><span style="font-size:12px; font-weight:bold; color:#777;">${p.pla}</span></td>
+                            <td>RD$ ${p.mon.toFixed(2)}</td>
+                            <td style="color:${resta <= 0 ? 'green' : 'red'}; font-weight:bold;">RD$ ${resta.toFixed(2)}</td>
+                            <td>
+                                ${resta <= 0 ? '<b style="color:green; font-size:12px;">PAGADO</b>' : `
+                                    <button class="btn-v" onclick="procesarPagoRapido(${index})">Cobrar Cuota</button>
+                                    <button style="background:gray; color:white; border:none; padding:8px; margin-left:3px; border-radius:5px; cursor:pointer;" onclick="alternarSiclaClient(${index})">Sicla</button>
+                                `}
                             </td>
                         </tr>`;
                     }
                 }
             });
-            document.getElementById('total-calle').innerText = totalCalle.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('total-ganancias').innerText = totalGananciasEstimadas.toLocaleString(undefined, {minimumFractionDigits: 2});
+
+            document.getElementById('total-calle').innerText = totalCalle.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('total-ganancias').innerText = totalGananciasEstimadas.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
-        function cobrar(id) {
-            const p = prestamos.find(x => x.id === id);
-            if(p.pag >= p.mon) return alert("Este préstamo ya está saldado.");
-            const sugerido = (p.mon / p.cuo).toFixed(2);
-            const monto = prompt(`Cobrar a ${p.cli}. Cuota sugerida (incluye recargos si existen): RD$ ${sugerido}`);
-            if(monto && !isNaN(monto)) {
-                p.pag += parseFloat(monto);
-                p.numPagos = (p.numPagos || 0) + 1;
-                
-                p.fechaUltimoPago = Date.now(); 
-                p.moraAcumulada = 0; 
+        async function procesarPagoRapido(index) {
+            const p = prestamos[index];
+            const valorCuotaFija = p.mon / p.cuo;
+            
+            p.pag += valorCuotaFija;
+            p.numPagos += 1;
+            p.fechaUltimoPago = Date.now();
 
-                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
-                document.getElementById('rf').innerText = new Date().toLocaleString();
-                document.getElementById('rc').innerText = p.cli;
-                document.getElementById('r-ced').innerText = p.ced || 'N/A';
-                document.getElementById('rtq').innerText = `${p.numPagos}/${p.cuo}`;
-                document.getElementById('rp').innerText = p.pla;
-                document.getElementById('rm').innerText = parseFloat(monto).toLocaleString();
-                document.getElementById('rq').innerText = sugerido;
-                document.getElementById('rr').innerText = (p.mon - p.pag).toLocaleString();
-                abrirM('m-recibo');
-                dibujar(false);
+            if(p.pag > p.mon) p.pag = p.mon;
+
+            // Actualizar el abono en el servidor de Firebase
+            if(p.firestoreId) {
+                await updateDoc(doc(db, "prestamos", p.firestoreId), {
+                    pag: p.pag,
+                    numPagos: p.numPagos,
+                    fechaUltimoPago: p.fechaUltimoPago
+                });
             }
-        }
 
-        function menuAcciones(id) {
-            const opcion = prompt("ACCIONES DISPONIBLES:\n1. GESTIONAR SICLA\n2. SALDAR PRÉSTAMO\n3. REENGANCHE\n4. ELIMINAR CLIENTE\n\nEscriba el número:");
-            if(opcion === "1") toggleSicla(id);
-            else if(opcion === "2") saldarPrestamo(id);
-            else if(opcion === "3") renganche(id);
-            else if(opcion === "4") eliminarCliente(id);
-        }
-
-        function renganche(id) {
-            const p = prestamos.find(x => x.id === id);
-            const restaActual = p.mon - p.pag;
-            const nuevoMonto = prompt(`REENGANCHE para ${p.cli}\nDeuda actual con mora/interés: RD$ ${restaActual.toLocaleString()}\n\nIngrese el NUEVO CAPITAL BASE a entregar:`);
-            if(nuevoMonto && !isNaN(nuevoMonto)) {
-                const porcentajeInteres = parseFloat(prompt("Ingrese el % de interés para este nuevo reenganche:", "30")) || 0;
-                const nuevoCapitalSumado = parseFloat(nuevoMonto);
-                const nuevoInteres = nuevoCapitalSumado * (porcentajeInteres / 100);
-                
-                p.mon = restaActual + nuevoCapitalSumado + nuevoInteres;
-                p.capitalOriginal = (p.capitalOriginal || p.mon) + nuevoCapitalSumado;
-                p.interesPactado = (p.interesPactado || 0) + nuevoInteres;
-                p.pag = 0; 
-                p.numPagos = 0; 
-                p.moraAcumulada = 0;
-                p.fechaUltimoPago = Date.now();
-
-                const nuevasCuotas = prompt("Ingrese la cantidad de cuotas totales para el reenganche:");
-                if(nuevasCuotas && !isNaN(nuevasCuotas)) {
-                    p.cuo = parseInt(nuevasCuotas);
-                    localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
-                    dibujar(false);
-                }
-            }
-        }
-
-        function toggleSicla(id) {
-            const p = prestamos.find(x => x.id === id);
-            p.enSicla = !p.enSicla;
-            localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
+            // Llenar Ticket de Recibo
+            document.getElementById('rf').innerText = new Date().toLocaleString();
+            document.getElementById('rc').innerText = p.cli.toUpperCase();
+            document.getElementById('r-ced').innerText = p.ced || 'N/A';
+            document.getElementById('rtq').innerText = `${p.numPagos} DE ${p.cuo}`;
+            document.getElementById('rp').innerText = p.pla.toUpperCase();
+            document.getElementById('rm').innerText = valorCuotaFija.toFixed(2);
+            document.getElementById('rr').innerText = (p.mon - p.pag).toFixed(2);
+            
+            abrirM('m-recibo');
             dibujar(false);
         }
 
-        function saldarPrestamo(id) {
-            const p = prestamos.find(x => x.id === id);
-            if(confirm(`¿Saldar deuda?`)) {
-                p.pag = p.mon; p.numPagos = p.cuo;
-                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
-                dibujar(false);
+        async function alternarSiclaClient(index) {
+            const p = prestamos[index];
+            p.enSicla = !p.enSicla;
+            
+            // Sincronizar estado en Firestore
+            if(p.firestoreId) {
+                await updateDoc(doc(db, "prestamos", p.firestoreId), {
+                    enSicla: p.enSicla
+                });
             }
+
+            alert(`Estado del cliente actualizado. En Sicla: ${p.enSicla ? 'SÍ' : 'NO'}`);
+            dibujar(false);
         }
 
-        function eliminarCliente(id) {
-            const pIndex = prestamos.findIndex(x => x.id === id);
-            if(confirm("¿Eliminar permanentemente?")) {
-                prestamos.splice(pIndex, 1);
-                localStorage.setItem('RYM_DATA_V2', JSON.stringify(prestamos));
-                dibujar(false);
-            }
-        }
+        // --- MAPEAR FUNCIONES GLOBALES PARA BOTONES HTML ---
+        window.abrirConfigLogo = abrirConfigLogo;
+        window.guardarConfig = guardarConfig;
+        window.entrar = entrar;
+        window.registrarUsuario = registrarUsuario;
+        window.crearCuentaAdmin = crearCuentaAdmin;
+        window.actualizarPrecioBoton = actualizarPrecioBoton;
+        window.modificarDiasUser = modificarDiasUser;
+        window.eliminarUsuarioSistema = eliminarUsuarioSistema;
+        window.salir = salir;
+        window.cambiarV = cambiarV;
+        window.abrirM = abrirM;
+        window.cerrarM = cerrarM;
+        window.guardarP = guardarP;
+        window.dibujar = dibujar;
+        window.procesarPagoRapido = procesarPagoRapido;
+        window.alternarSiclaClient = alternarSiclaClient;
     </script>
 </body>
 </html>
