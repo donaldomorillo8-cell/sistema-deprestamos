@@ -261,7 +261,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Inicialización de la cuenta pública de EmailJS recopilada del panel
+        // Inicialización pública de tu cuenta en EmailJS
         emailjs.init("losukir"); 
 
         const firebaseConfig = {
@@ -281,7 +281,6 @@
         let prestamos = [];
         let sesion = JSON.parse(localStorage.getItem('RYM_SESSION_SYSTEM')) || null;
 
-        // Variables de control temporal para la recuperación de clave
         let codigoGeneradoLocal = null;
         let usuarioEnRecuperacion = null;
 
@@ -336,7 +335,7 @@
             } catch (error) { console.error("Error: ", error); }
         };
 
-        // --- LÓGICA DE RECUPERACIÓN DE CONTRASEÑA CON TU SERVICE ID ---
+        // --- LÓGICA DE RECUPERACIÓN CORREGIDA ---
         async function enviarCodigoVerificacion() {
             const correoDestino = document.getElementById('rec-cor').value.trim().toLowerCase();
             if(!correoDestino) return alert("Por favor, introduce tu correo registrado.");
@@ -347,6 +346,7 @@
             codigoGeneradoLocal = Math.floor(100000 + Math.random() * 900000).toString();
             usuarioEnRecuperacion = usuarioEncontrado.correo;
 
+            // Parámetros limpios estructurados exactamente como se mapean en EmailJS
             const parametrosEmail = {
                 nombre: usuarioEncontrado.nombre,
                 to_email: usuarioEncontrado.correo,
@@ -355,7 +355,7 @@
 
             alert("Generando código... Por favor espera un momento.");
 
-            // Se integra directamente tu Service ID: service_yk0dm67
+            // Service ID: service_yk0dm67 | Template ID: losukir
             emailjs.send("service_yk0dm67", "losukir", parametrosEmail)
                 .then(() => {
                     alert("¡Código de seguridad enviado exitosamente a tu correo!");
@@ -789,7 +789,7 @@
             dibujar(false);
         }
 
-        // CONTROL DE ACCESIBILIDAD GLOBAL DESDE MODULOS
+        // CONTROL DE ACCESIBILIDAD GLOBAL
         window.enviarCodigoVerificacion = enviarCodigoVerificacion;
         window.cambiarContrasenaFinal = cambiarContrasenaFinal;
         window.abrirConfigLogo = abrirConfigLogo;
